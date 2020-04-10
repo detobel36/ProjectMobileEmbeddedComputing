@@ -1,0 +1,7 @@
+src/obj_z1 
+src/obj_cooja 
+src/contiki-z1.a 
+src/contiki-z1.map 
+src/hello-world.z1 
+src/symbols.c 
+src/symbols.h

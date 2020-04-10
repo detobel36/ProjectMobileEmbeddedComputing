@@ -24,7 +24,7 @@
       org.contikios.cooja.mspmote.Z1MoteType
       <identifier>z11</identifier>
       <description>Z1 Sensor</description>
-      <source EXPORT="discard">[CONTIKI_DIR]/examples/hello-world/hello-world.c</source>
+      <source EXPORT="discard">[CONTIKI_DIR]/../ProjectMobileEmbeddedComputing/src/hello-world.c</source>
       <commands EXPORT="discard">make hello-world.z1 TARGET=z1</commands>
       <firmware EXPORT="copy">[CONTIKI_DIR]/examples/hello-world/hello-world.z1</firmware>
       <moteinterface>org.contikios.cooja.interfaces.Position</moteinterface>
@@ -44,7 +44,7 @@
       org.contikios.cooja.contikimote.ContikiMoteType
       <identifier>mtype583</identifier>
       <description>Computation nodes</description>
-      <source>[CONTIKI_DIR]/examples/hello-world/hello-world.c</source>
+      <source>[CONTIKI_DIR]/../ProjectMobileEmbeddedComputing/src/hello-world.c</source>
       <commands>make hello-world.cooja TARGET=cooja</commands>
       <moteinterface>org.contikios.cooja.interfaces.Position</moteinterface>
       <moteinterface>org.contikios.cooja.interfaces.Battery</moteinterface>
