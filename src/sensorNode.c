@@ -15,8 +15,25 @@
 #define NUM_HISTORY_ENTRIES 4
 
 
+/*---------------------------------------------------------------------------*/
+// VARIABLES
+static struct broadcast_conn broadcast;
+static struct runicast_conn runicast;
+static uint16_t rank = 0;
+static linkaddr_t parentAddr;
+/*---------------------------------------------------------------------------*/
+
 
 /*---------------------------------------------------------------------------*/
+// STRUCTURE
+struct broadcast_packet {
+  uint16_t rank;
+};
+/*---------------------------------------------------------------------------*/
+
+
+/*---------------------------------------------------------------------------*/
+// PROCESS
 PROCESS(broadcast_process, "Broadcast process");
 PROCESS(runicast_process, "Runicast process");
 // TODO add a process to get Data
@@ -26,16 +43,18 @@ AUTOSTART_PROCESSES(&broadcast_process, &runicast_process);
 
 
 /*---------------------------------------------------------------------------*/
+// BROADCAST
 static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
+  struct broadcast_packet *packet;
+  packet = packetbuf_dataptr();
+
   printf("broadcast message received from %d.%d: '%s'\n",
          from->u8[0], from->u8[1], (char *)packetbuf_dataptr());
 }
 
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
-static struct broadcast_conn broadcast;
-/*---------------------------------------------------------------------------*/
 PROCESS_THREAD(broadcast_process, ev, data)
 {
   static struct etimer et;
@@ -64,7 +83,7 @@ PROCESS_THREAD(broadcast_process, ev, data)
 
 
 /*---------------------------------------------------------------------------*/
-static struct runicast_conn runicast;
+// RUNICAST
 PROCESS_THREAD(runicast_process, ev, data)
 {
   PROCESS_EXITHANDLER(runicast_close(&runicast);)
