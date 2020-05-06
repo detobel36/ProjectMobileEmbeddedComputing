@@ -141,6 +141,9 @@ PROCESS_THREAD(data_process, ev, data)
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
   }
 
+  // Generates a random int between 0 and 100
+  int random = rand() % (100 + 1 - 0) + 0; // (0 for completeness)
+
   // TODO
   // SEND DATA
 
