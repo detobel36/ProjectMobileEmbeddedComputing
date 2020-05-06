@@ -36,10 +36,9 @@ struct broadcast_packet {
 // PROCESS
 PROCESS(broadcast_process, "Broadcast process");
 PROCESS(runicast_process, "Runicast process");
-// TODO add a process to get Data
+PROCESS(data_process, "Data process");
 AUTOSTART_PROCESSES(&broadcast_process, &runicast_process);
 /*---------------------------------------------------------------------------*/
-
 
 
 /*---------------------------------------------------------------------------*/
@@ -129,4 +128,21 @@ PROCESS_THREAD(runicast_process, ev, data)
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
+// DATA PROCESS
+PROCESS_THREAD(data_process, ev, data)
+{
+  PROCESS_EXITHANDLER(runicast_close(&runicast);)
+  PROCESS_BEGIN();
 
+  while(1) {
+    static struct etimer et;
+
+    etimer_set(&et, 60 * CLOCK_SECOND);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+  }
+
+  // TODO
+  // SEND DATA
+
+  PROCESS_END();
+}
