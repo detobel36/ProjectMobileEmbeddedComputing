@@ -15,6 +15,7 @@
 
 #define MAX_RETRANSMISSIONS 4
 #define NUM_HISTORY_ENTRIES 4
+#define BROADCAST_DELAY 15
 
 
 /*---------------------------------------------------------------------------*/
@@ -52,7 +53,11 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
     packet_response.type = DISCOVERY_RESP;
     packet_response.rank = rank;
 
-    // TODO send respond with runicast
+    packetbuf_copyfrom(&packet_response, sizeof(struct general_packet));
+    printf("Send response to broadcast\n");
+    runicast_send(&runicast, from, MAX_RETRANSMISSIONS);
+  } else {
+    printf("Unknow packet broadcsat: %d\n", packet->type);
   }
 }
 
@@ -69,18 +74,18 @@ PROCESS_THREAD(broadcast_process, ev, data)
 
   while(1) {
 
-    /* Delay 2-4 seconds */
-    // TODO may be add more time
-    etimer_set(&et, CLOCK_SECOND * 4 + random_rand() % (CLOCK_SECOND * 4));
-
-    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-
     struct general_packet packet;
     packet.type = DISCOVERY_REQ;
     packet.rank = rank;
     packetbuf_copyfrom(&packet, sizeof(struct general_packet));
     broadcast_send(&broadcast);
     printf("broadcast message sent\n");
+
+    /* Delay between BROADCAST_DELAY and 2*BROADCAST_DELAY seconds */
+    // TODO may be add more time
+    etimer_set(&et, CLOCK_SECOND * BROADCAST_DELAY + (random_rand() % (CLOCK_SECOND * BROADCAST_DELAY)));
+
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
   }
 
   PROCESS_END();
@@ -105,6 +110,9 @@ recv_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
     struct data_packet *data_packet;
     data_packet = packetbuf_dataptr();
     printf("Data: %d\n", data_packet->data);
+  } else {
+    printf("runicast message received from %d.%d, seqno %d\n",
+        from->u8[0], from->u8[1], seqno);
   }
 
   /* OPTIONAL: Sender history */
@@ -134,8 +142,6 @@ recv_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
   //   e->seq = seqno;
   // }
 
-  printf("runicast message received from %d.%d, seqno %d\n",
-   from->u8[0], from->u8[1], seqno);
 }
 
 static void
@@ -209,7 +215,7 @@ PROCESS_THREAD(data_process, ev, data)
   while(1) {
     static struct etimer et;
 
-    etimer_set(&et, 2 * CLOCK_SECOND);
+    etimer_set(&et, 60 * CLOCK_SECOND);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
     // Generates a random int between 0 and 100
@@ -221,14 +227,14 @@ PROCESS_THREAD(data_process, ev, data)
     packet.data = random_int;
     packetbuf_copyfrom(&packet, sizeof(struct data_packet));
     
-    // TODO update address
+    // TODO update address and check that we have this address (parent ?)
     linkaddr_t recv;
     recv.u8[0] = 1;
     recv.u8[1] = 0;
 
     printf("Send random data %d\n", random_int);
     runicast_send(&runicast, &recv, MAX_RETRANSMISSIONS);
-    SEND DATA
+    // SEND DATA
   }
 
   PROCESS_END();
