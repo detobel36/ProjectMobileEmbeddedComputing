@@ -1,2 +1,2 @@
 all: 
-	@echo "Work in progress"
+	$(MAKE) -C SensorNode
