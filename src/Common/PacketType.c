@@ -5,7 +5,13 @@
 enum packet_type 
 {
     DISCOVERY_REQ,
-    DISCOVERY_RESP
+    DISCOVERY_RESP,
+    PACKET_DATA
+};
+
+struct abstract_packet
+{
+    uint8_t type;
 };
 
 struct general_packet 
@@ -14,10 +20,11 @@ struct general_packet
     uint16_t rank;
 };
 
-// TODO
-// struct data_packet
-// {
-//     /* data */
-// };
+// TODO enhance
+struct data_packet
+{
+    uint8_t type;
+    uint8_t data;
+};
 
 #endif
