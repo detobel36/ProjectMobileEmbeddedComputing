@@ -10,7 +10,7 @@
 #include "dev/leds.h"
 #include "random.h"
 
-#include "Common/PacketType.c"
+#include "../Common/PacketType.c"
 
 
 #define MAX_RETRANSMISSIONS 4
@@ -49,7 +49,7 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   // Request to find parent
   if(packet->type == DISCOVERY_REQ) {
     struct general_packet packet_response;
-    packet_response.type = DISCOVERY_RESPONSE;
+    packet_response.type = DISCOVERY_RESP;
     packet_response.rank = rank;
 
     // TODO send respond with runicast
