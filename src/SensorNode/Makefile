@@ -2,7 +2,7 @@ CONTIKI_PROJECT = sensorNode
 all: $(CONTIKI_PROJECT)
 
 CONTIKI_WITH_RIME = 1
-CONTIKI = ../../../contiki/
+CONTIKI = ../../contiki/
 include $(CONTIKI)/Makefile.include
 
 
