@@ -1,4 +1,4 @@
-CONTIKI_PROJECT = hello-world
+CONTIKI_PROJECT = sensorNode
 all: $(CONTIKI_PROJECT)
 
 CONTIKI_WITH_RIME = 1
