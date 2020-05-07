@@ -10,6 +10,8 @@
 #include "dev/leds.h"
 #include "random.h"
 
+#include "../Common/PacketType.c"
+
 
 #define MAX_RETRANSMISSIONS 4
 #define NUM_HISTORY_ENTRIES 4
@@ -21,14 +23,6 @@ static struct broadcast_conn broadcast;
 static struct runicast_conn runicast;
 static uint16_t rank = 0;
 static linkaddr_t parentAddr;
-/*---------------------------------------------------------------------------*/
-
-
-/*---------------------------------------------------------------------------*/
-// STRUCTURE
-struct broadcast_packet {
-  uint16_t rank;
-};
 /*---------------------------------------------------------------------------*/
 
 
@@ -46,11 +40,20 @@ AUTOSTART_PROCESSES(&broadcast_process, &runicast_process);
 static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
-  struct broadcast_packet *packet;
+  struct general_packet *packet;
   packet = packetbuf_dataptr();
 
-  printf("broadcast message received from %d.%d: '%s'\n",
-         from->u8[0], from->u8[1], (char *)packetbuf_dataptr());
+  printf("broadcast message received from %d.%d. Type: %d and rank: %d\n",
+         from->u8[0], from->u8[1], packet->type, packet->rank);
+
+  // Request to find parent
+  if(packet->type == DISCOVERY_REQ) {
+    struct general_packet packet_response;
+    packet_response.type = DISCOVERY_RESP;
+    packet_response.rank = rank;
+
+    // TODO send respond with runicast
+  }
 }
 
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
@@ -67,11 +70,15 @@ PROCESS_THREAD(broadcast_process, ev, data)
   while(1) {
 
     /* Delay 2-4 seconds */
+    // TODO may be add more time
     etimer_set(&et, CLOCK_SECOND * 4 + random_rand() % (CLOCK_SECOND * 4));
 
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
-    packetbuf_copyfrom("Hello", 6);
+    struct general_packet packet;
+    packet.type = DISCOVERY_REQ;
+    packet.rank = rank;
+    packetbuf_copyfrom(&packet, sizeof(struct general_packet));
     broadcast_send(&broadcast);
     printf("broadcast message sent\n");
   }
