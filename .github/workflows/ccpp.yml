@@ -13,5 +13,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Sync submodules
+      run: git submodule sync --recursive && git submodule update --init --recursive
     - name: make
       run: make
