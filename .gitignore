@@ -1,13 +1,31 @@
+
+# Folder
 */obj_z1 
 */*/obj_z1 
+
+*/*/obj_native
+
 */obj_cooja 
+
+# Contiki file
 */contiki-z1.a 
 */*/contiki-z1.a 
+
+*/contiki-native.a
+*/*/contiki-native.a
+*/contiki-native.map
+*/*/contiki-native.map
+
 */contiki-z1.map 
 */*/contiki-z1.map 
-*/hello-world.z1 
+
+# C file
 */symbols.c 
 */*/symbols.c 
 */symbols.h
 */*/symbols.h
+
+# Extension
 *.z1
+
+*.native
