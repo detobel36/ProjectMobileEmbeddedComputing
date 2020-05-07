@@ -5,8 +5,10 @@ Project for the cours Mobile and Embedded Computing
 ## Folder structure
 
 ```
-> contiki
 > ProjectMobileEmbeddedComputing
+    > contiki
     > src
+        > Common (code use by multiple nodes)
+        > SensorNode
     > README.md
 ```
