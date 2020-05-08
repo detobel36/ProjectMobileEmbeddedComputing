@@ -53,6 +53,9 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
     packet_response.type = DISCOVERY_RESP;
     packet_response.rank = rank;
 
+    int countTransmission=0;
+    while (runicast_is_transmitting(&runicast) && ++countTransmission < MAX_RETRANSMISSIONS) {}
+
     packetbuf_copyfrom(&packet_response, sizeof(struct general_packet));
     printf("Send response to broadcast\n");
     runicast_send(&runicast, from, MAX_RETRANSMISSIONS);
@@ -103,7 +106,15 @@ recv_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
   abstr_packet = packetbuf_dataptr();
 
   if (abstr_packet->type == DISCOVERY_RESP) {
-    printf("Discovery response from %d.%d, seqno %d\n", from->u8[0], from->u8[1], seqno);
+    struct general_packet *general_packet;
+    general_packet = packetbuf_dataptr();
+    printf("Discovery response from %d.%d, seqno %d, rank: %d\n", from->u8[0], from->u8[1], seqno,
+      general_packet->rank);
+
+    if(rank == 0) {
+      rank = general_packet->rank+1;
+      printf("Init rank: %d\n", rank);
+    }
 
   } else if(abstr_packet->type == PACKET_DATA) {
     printf("Data packet from %d.%d, seqno %d\n", from->u8[0], from->u8[1], seqno);
@@ -232,6 +243,8 @@ PROCESS_THREAD(data_process, ev, data)
     recv.u8[0] = 1;
     recv.u8[1] = 0;
 
+    int countTransmission=0;
+    while (runicast_is_transmitting(&runicast) && ++countTransmission < MAX_RETRANSMISSIONS) {}
     printf("Send random data %d\n", random_int);
     runicast_send(&runicast, &recv, MAX_RETRANSMISSIONS);
     // SEND DATA
