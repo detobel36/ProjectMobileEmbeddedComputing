@@ -25,6 +25,8 @@ struct data_packet
 {
     uint8_t type;
     uint8_t data;
+    linkaddr_t address;
+    bool link; // True = Up link; False = Downlink
 };
 
 #endif

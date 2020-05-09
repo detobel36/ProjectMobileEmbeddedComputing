@@ -9,6 +9,8 @@
 #include "dev/button-sensor.h"
 #include "dev/leds.h"
 #include "random.h"
+#include <stdbool.h>
+
 
 #include "../Common/PacketType.c"
 
@@ -110,11 +112,10 @@ recv_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
   abstr_packet = packetbuf_dataptr();
 
   if (abstr_packet->type == DISCOVERY_RESP) {
-    struct general_packet *general_packet;
-    general_packet = packetbuf_dataptr();
+    struct general_packet *general_packet = (struct general_packet *) abstr_packet;
     uint16_t getting_rank = general_packet->rank;
-    printf("Discovery response from %d.%d, seqno %d, rank: %d\n", from->u8[0], from->u8[1], seqno,
-      getting_rank);
+    printf("Discovery response from %d.%d, seqno %d, rank: %d (type: %d)\n", from->u8[0], from->u8[1], seqno,
+      getting_rank, abstr_packet->type);
 
     if(rank == 0) {
       rank = getting_rank+1;
@@ -128,17 +129,22 @@ recv_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
     // TODO check "if(rank == getting_rank+1)" and better signal quality !
 
   } else if(abstr_packet->type == PACKET_DATA) {
-    printf("Data packet from %d.%d, seqno %d\n", from->u8[0], from->u8[1], seqno);
 
-    struct data_packet *data_packet;
-    data_packet = packetbuf_dataptr();
-    printf("Data: %d\n", data_packet->data);
+    struct data_packet *forward_data_packet = (struct data_packet *) abstr_packet;
 
-    // TODO send data to parent
+    linkaddr_t source_addr = forward_data_packet->address;
+    printf("Forward data %d (source: %d.%d) from %d.%d to %d.%d, seqno %d (type: %d)\n", forward_data_packet->data, 
+      source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1], parentAddr.u8[0], 
+      parentAddr.u8[1], seqno, forward_data_packet->type);
+    packetbuf_copyfrom(&forward_data_packet, sizeof(struct data_packet));
+  
+    int countTransmission=0;
+    while (runicast_is_transmitting(&runicast) && ++countTransmission < MAX_RETRANSMISSIONS) {}
+    runicast_send(&runicast, &parentAddr, MAX_RETRANSMISSIONS);
 
   } else {
-    printf("runicast message received from %d.%d, seqno %d\n",
-        from->u8[0], from->u8[1], seqno);
+    printf("[UNKNOW] runicast message received from %d.%d, seqno %d, type: %d\n",
+        from->u8[0], from->u8[1], seqno, abstr_packet->type);
   }
 
   /* OPTIONAL: Sender history */
@@ -248,21 +254,17 @@ PROCESS_THREAD(data_process, ev, data)
       // Generates a random int between 0 and 100
       uint8_t random_int = random_rand() % (100 + 1 - 0) + 0; // (0 for completeness)
 
-      // TODO may be add other
       struct data_packet packet;
       packet.type = PACKET_DATA;
       packet.data = random_int;
+      packet.address = linkaddr_node_addr;
+      packet.link = true;
       packetbuf_copyfrom(&packet, sizeof(struct data_packet));
       
-      // DEBUG address
-      // linkaddr_t recv;
-      // recv.u8[0] = 1;
-      // recv.u8[1] = 0;
-
       int countTransmission=0;
       while (runicast_is_transmitting(&runicast) && ++countTransmission < MAX_RETRANSMISSIONS) {}
-      printf("Send random data %d\n", random_int);
       runicast_send(&runicast, &parentAddr, MAX_RETRANSMISSIONS);
+      printf("Send random data %d\n", random_int);
     }
     // SEND DATA
   }

@@ -9,6 +9,7 @@
 #include "dev/button-sensor.h"
 #include "dev/leds.h"
 #include "random.h"
+#include <stdbool.h>
 
 #include "../Common/PacketType.c"
 
@@ -93,13 +94,16 @@ recv_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
     printf("Discovery response from %d.%d, seqno %d\n", from->u8[0], from->u8[1], seqno);
 
   } else if(abstr_packet->type == PACKET_DATA) {
-    printf("Data packet from %d.%d, seqno %d\n", from->u8[0], from->u8[1], seqno);
+    // printf("Data packet from %d.%d, seqno %d\n", from->u8[0], from->u8[1], seqno);
     struct data_packet *data_packet;
     data_packet = packetbuf_dataptr();
-    printf("Data: %d\n", data_packet->data);
+    linkaddr_t address = data_packet->address;
+    printf("Receive data packet from: %d.%d with value: %d (seqno %d)\n", address.u8[0], 
+      address.u8[1], data_packet->data, seqno);
+    
   } else {
-    printf("runicast message received from %d.%d, seqno %d\n",
-        from->u8[0], from->u8[1], seqno);
+    printf("[UNKNOW] runicast message received from %d.%d, seqno %d, type: %d\n",
+        from->u8[0], from->u8[1], seqno, abstr_packet->type);
   }
 }
 
