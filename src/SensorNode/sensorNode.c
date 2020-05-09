@@ -136,7 +136,7 @@ recv_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
     printf("Forward data %d (source: %d.%d) from %d.%d to %d.%d, seqno %d (type: %d)\n", forward_data_packet->data, 
       source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1], parentAddr.u8[0], 
       parentAddr.u8[1], seqno, forward_data_packet->type);
-    packetbuf_copyfrom(&forward_data_packet, sizeof(struct data_packet));
+    packetbuf_copyfrom(forward_data_packet, sizeof(struct data_packet));
   
     int countTransmission=0;
     while (runicast_is_transmitting(&runicast) && ++countTransmission < MAX_RETRANSMISSIONS) {}
