@@ -18,13 +18,14 @@
 #define MAX_RETRANSMISSIONS 4
 #define NUM_HISTORY_ENTRIES 4
 #define BROADCAST_DELAY 15
+#define MAX_RANK 255
 
 
 /*---------------------------------------------------------------------------*/
 // VARIABLES
 static struct broadcast_conn broadcast;
 static struct runicast_conn runicast;
-static uint16_t rank = 0;
+static uint8_t rank = MAX_RANK;
 static linkaddr_t parentAddr;
 /*---------------------------------------------------------------------------*/
 
@@ -52,7 +53,8 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   // Request to find parent
   if(packet->type == DISCOVERY_REQ) {
 
-    if(rank != 0) {
+    // Respond to broadcast
+    if(rank != MAX_RANK) {
       struct general_packet packet_response;
       packet_response.type = DISCOVERY_RESP;
       packet_response.rank = rank;
@@ -117,7 +119,7 @@ recv_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
     printf("Discovery response from %d.%d, seqno %d, rank: %d (type: %d)\n", from->u8[0], from->u8[1], seqno,
       getting_rank, abstr_packet->type);
 
-    if(rank == 0) {
+    if(rank == MAX_RANK) {
       rank = getting_rank+1;
       parentAddr = *from;
       printf("Init rank: %d\n", rank);
@@ -138,7 +140,7 @@ recv_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
       parentAddr.u8[1], seqno, forward_data_packet->type);
     packetbuf_copyfrom(forward_data_packet, sizeof(struct data_packet));
   
-    int countTransmission=0;
+    int countTransmission = 0;
     while (runicast_is_transmitting(&runicast) && ++countTransmission < MAX_RETRANSMISSIONS) {}
     runicast_send(&runicast, &parentAddr, MAX_RETRANSMISSIONS);
 
@@ -250,7 +252,7 @@ PROCESS_THREAD(data_process, ev, data)
     etimer_set(&et, 60 * CLOCK_SECOND);
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
-    if(rank != 0) {
+    if(rank != MAX_RANK) {
       // Generates a random int between 0 and 100
       uint8_t random_int = random_rand() % (100 + 1 - 0) + 0; // (0 for completeness)
 
@@ -261,7 +263,7 @@ PROCESS_THREAD(data_process, ev, data)
       packet.link = true;
       packetbuf_copyfrom(&packet, sizeof(struct data_packet));
       
-      int countTransmission=0;
+      int countTransmission = 0;
       while (runicast_is_transmitting(&runicast) && ++countTransmission < MAX_RETRANSMISSIONS) {}
       runicast_send(&runicast, &parentAddr, MAX_RETRANSMISSIONS);
       printf("Send random data %d\n", random_int);

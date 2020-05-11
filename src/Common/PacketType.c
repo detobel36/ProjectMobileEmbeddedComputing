@@ -17,7 +17,7 @@ struct abstract_packet
 struct general_packet 
 {
     uint8_t type;
-    uint16_t rank;
+    uint8_t rank;
 };
 
 // TODO enhance

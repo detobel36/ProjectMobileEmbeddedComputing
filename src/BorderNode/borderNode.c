@@ -17,13 +17,14 @@
 #define MAX_RETRANSMISSIONS 4
 #define NUM_HISTORY_ENTRIES 4
 #define BROADCAST_DELAY 15
+#define MAX_RANK 255
 
 
 /*---------------------------------------------------------------------------*/
 // VARIABLES
 static struct broadcast_conn broadcast;
 static struct runicast_conn runicast;
-static uint16_t rank = 1;
+static uint16_t rank = 0;
 /*---------------------------------------------------------------------------*/
 
 
