@@ -129,10 +129,7 @@ timedout_broadcast_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8
 static void
 recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
 {
-  struct abstract_packet *abstr_packet;
-  abstr_packet = packetbuf_dataptr();
-
-  struct data_packet *forward_data_packet = (struct data_packet *) abstr_packet;
+  struct data_packet *forward_data_packet = packetbuf_dataptr();
 
   while(runicast_is_transmitting(&runicast_broadcast)) { }
   packetbuf_clear();
@@ -310,10 +307,8 @@ PROCESS_THREAD(data_process, ev, data)
       packetbuf_clear();
 
       struct data_packet packet;
-      packet.type = PACKET_DATA;
       packet.data = random_int;
       packet.address = linkaddr_node_addr;
-      packet.link = true;
       packetbuf_copyfrom(&packet, sizeof(struct data_packet));
       
       int countTransmission = 0;
