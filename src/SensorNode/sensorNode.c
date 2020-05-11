@@ -50,16 +50,15 @@ AUTOSTART_PROCESSES(&broadcast_process, &runicast_process, &data_process);
 static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
-  printf("broadcast message received from %d.%d.\n",
-         from->u8[0], from->u8[1]);
+  printf("broadcast message received from %d.%d.\n", from->u8[0], from->u8[1]);
 
   // Respond to broadcast
   if(rank != MAX_RANK) {
-    struct rank_packet packet_response;
-    packet_response.rank = rank;
-
     while(runicast_is_transmitting(&runicast_broadcast)) { }
     packetbuf_clear();
+
+    struct rank_packet packet_response;
+    packet_response.rank = rank;
 
     packetbuf_copyfrom(&packet_response, sizeof(struct rank_packet));
     printf("Send response to broadcast\n");
@@ -224,7 +223,7 @@ PROCESS_THREAD(broadcast_process, ev, data)
     // packet.rank = rank;
     // packetbuf_copyfrom(&packet, sizeof(struct general_packet));
     broadcast_send(&broadcast);
-    // printf("broadcast message sent\n");
+    printf("broadcast message sent\n");
 
     /* Delay between BROADCAST_DELAY and 2*BROADCAST_DELAY seconds */
     // TODO may be add more time
@@ -311,12 +310,6 @@ PROCESS_THREAD(data_process, ev, data)
       packet.address = linkaddr_node_addr;
       packetbuf_copyfrom(&packet, sizeof(struct data_packet));
       
-      int countTransmission = 0;
-      // while (runicast_is_transmitting(&runicast) && ++countTransmission < MAX_RETRANSMISSIONS) {}
-      while (runicast_is_transmitting(&runicast)) {
-        ++countTransmission;
-        printf("Wait runicast transmit %d\n", countTransmission);
-      }
       runicast_send(&runicast_data, &parent_addr, MAX_RETRANSMISSIONS);
       printf("Send random data %d\n", random_int);
       packetbuf_clear();
