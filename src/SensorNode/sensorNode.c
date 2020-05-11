@@ -26,7 +26,8 @@
 static struct broadcast_conn broadcast;
 static struct runicast_conn runicast;
 static uint8_t rank = MAX_RANK;
-static linkaddr_t parentAddr;
+static linkaddr_t parent_addr;
+static uint16_t parent_last_rssi;
 /*---------------------------------------------------------------------------*/
 
 
@@ -112,41 +113,63 @@ recv_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
 {
   struct abstract_packet *abstr_packet;
   abstr_packet = packetbuf_dataptr();
+  uint16_t current_rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
 
+  // TODO
+  // Update rssi when receive packet from parent
+  // parent_last_rssi = current_rssi;
+
+  // On other node reply
   if (abstr_packet->type == DISCOVERY_RESP) {
+
     struct general_packet *general_packet = (struct general_packet *) abstr_packet;
     uint16_t getting_rank = general_packet->rank;
-    printf("Discovery response from %d.%d, seqno %d, rank: %d (type: %d)\n", from->u8[0], from->u8[1], seqno,
-      getting_rank, abstr_packet->type);
+    printf("Discovery response from %d.%d, seqno %d, rank: %d\n", from->u8[0], from->u8[1], seqno,
+      getting_rank);
 
     if(rank == MAX_RANK) {
       rank = getting_rank+1;
-      parentAddr = *from;
-      printf("Init rank: %d\n", rank);
+      parent_addr = *from;
+      parent_last_rssi = current_rssi;
+      printf("Init rank: %d (quality: %d)\n", rank, current_rssi);
+
     } else if(rank > getting_rank+1) {
-      rank = getting_rank+1;
-      parentAddr = *from;
-      printf("Change parent and get rank: %d\n", rank);
+      if(current_rssi > parent_last_rssi) {
+        rank = getting_rank+1;
+        parent_addr = *from;
+        parent_last_rssi = current_rssi;
+        printf("Change parent and get rank: %d (quality signal: %d)\n", rank, parent_last_rssi);
+      } else {
+        printf("Quality signal not enought to change parent (new: %d, parent: %d)\n", current_rssi, parent_last_rssi);
+      }
+
+    } else if(parent_addr.u8[0] == from->u8[0] && parent_addr.u8[1] == from->u8[1]) {
+      parent_last_rssi = current_rssi;
+      printf("Update parent quality signal (new: %d)\n", current_rssi);
     }
     // TODO check "if(rank == getting_rank+1)" and better signal quality !
 
+
+  // When we receive packet
   } else if(abstr_packet->type == PACKET_DATA) {
 
     struct data_packet *forward_data_packet = (struct data_packet *) abstr_packet;
 
     linkaddr_t source_addr = forward_data_packet->address;
-    printf("Forward data %d (source: %d.%d) from %d.%d to %d.%d, seqno %d (type: %d)\n", forward_data_packet->data, 
-      source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1], parentAddr.u8[0], 
-      parentAddr.u8[1], seqno, forward_data_packet->type);
+    printf("Forward data %d (source: %d.%d) from %d.%d to %d.%d, seqno %d\n", forward_data_packet->data, 
+      source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1], parent_addr.u8[0], 
+      parent_addr.u8[1], seqno);
     packetbuf_copyfrom(forward_data_packet, sizeof(struct data_packet));
   
     int countTransmission = 0;
     while (runicast_is_transmitting(&runicast) && ++countTransmission < MAX_RETRANSMISSIONS) {}
-    runicast_send(&runicast, &parentAddr, MAX_RETRANSMISSIONS);
+    runicast_send(&runicast, &parent_addr, MAX_RETRANSMISSIONS);
 
+
+  // Unknow packet
   } else {
-    printf("[UNKNOW] runicast message received from %d.%d, seqno %d, type: %d\n",
-        from->u8[0], from->u8[1], seqno, abstr_packet->type);
+    printf("[UNKNOW] runicast message received from %d.%d, seqno %d\n",
+        from->u8[0], from->u8[1], seqno);
   }
 
   /* OPTIONAL: Sender history */
@@ -265,7 +288,7 @@ PROCESS_THREAD(data_process, ev, data)
       
       int countTransmission = 0;
       while (runicast_is_transmitting(&runicast) && ++countTransmission < MAX_RETRANSMISSIONS) {}
-      runicast_send(&runicast, &parentAddr, MAX_RETRANSMISSIONS);
+      runicast_send(&runicast, &parent_addr, MAX_RETRANSMISSIONS);
       printf("Send random data %d\n", random_int);
     }
     // SEND DATA
