@@ -1,10 +1,5 @@
-#ifndef packetTypes_h
-#define packetTypes_h
-
-struct abstract_packet
-{
-    uint8_t type;
-};
+#ifndef packetStruct_c
+#define packetStruct_c
 
 struct rank_packet 
 {

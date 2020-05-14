@@ -1,0 +1,13 @@
+#ifndef constants_c
+#define constants_c
+
+#define MAX_RETRANSMISSIONS 4
+#define NUM_HISTORY_ENTRIES 4
+#define BROADCAST_DELAY 15
+#define MAX_RANK 255
+
+#define BROADCAST_CHANNEL 129
+#define RUNICAST_CHANNEL_BROADCAST 144
+#define RUNICAST_CHANNEL_DATA 154
+
+#endif
