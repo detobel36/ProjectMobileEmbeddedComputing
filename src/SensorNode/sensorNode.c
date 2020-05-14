@@ -56,7 +56,6 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 
     packetbuf_copyfrom(&packet_response, sizeof(struct rank_packet));
     printf("Send response to broadcast of %d.%d\n", from->u8[0], from->u8[1]);
-    printf("OPEN runicast broadcast\n");
     runicast_send(&runicast_broadcast, from, MAX_RETRANSMISSIONS);
     packetbuf_clear();
   }
@@ -107,7 +106,6 @@ sent_broadcast_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t r
 {
   printf("runicast broadcast message sent to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
-  printf("END runicast broadcast\n");
 }
 
 static void
@@ -115,7 +113,6 @@ timedout_broadcast_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8
 {
   printf("runicast broadcast message timed out when sending to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
-  printf("END runicast broadcast\n");
 }
 
 /*---------------------------------------------------------------------------*/
@@ -143,7 +140,6 @@ recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
   packetbuf_copyfrom(forward_data_packet, sizeof(struct data_packet));
 
   runicast_send(&runicast_data, &parent_addr, MAX_RETRANSMISSIONS);
-  printf("OPEN runicast data\n");
   packetbuf_clear();
 
   /* OPTIONAL: Sender history */
@@ -179,7 +175,6 @@ sent_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retran
 {
   printf("runicast data message sent to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
-  printf("END runicast data\n");
 }
 
 static void
@@ -187,7 +182,6 @@ timedout_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t re
 {
   printf("runicast data message timed out when sending to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
-  printf("END runicast data\n");
 }
 
 /*---------------------------------------------------------------------------*/
@@ -285,7 +279,6 @@ PROCESS_THREAD(data_process, ev, data)
         
         runicast_send(&runicast_data, &parent_addr, MAX_RETRANSMISSIONS);
         printf("Send random data %d\n", random_int);
-        printf("OPEN runicast data\n");
         packetbuf_clear();
       }
     }
