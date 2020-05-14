@@ -265,7 +265,7 @@ PROCESS_THREAD(data_process, ev, data)
     static struct etimer et;
 
     // TODO add random to not send all at the same time
-    etimer_set(&et, 60 * CLOCK_SECOND);
+    etimer_set(&et, CLOCK_SECOND * DATA_MIN_DELAY + random_rand() % (CLOCK_SECOND * DATA_MAX_DELAY));
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
     if(rank != MAX_RANK) {
