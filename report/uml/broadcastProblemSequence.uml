@@ -1,0 +1,67 @@
+@startuml
+
+'no shadow
+skinparam shadowing false
+
+'color
+skinparam sequence {
+  BackgroundColor AliceBlue
+  ArrowColor CornflowerBlue
+  BorderColor CornflowerBlue
+  
+  ParticipantBackgroundColor AliceBlue
+  ParticipantBorderColor CornflowerBlue
+  
+  LifeLineBorderColor CornflowerBlue
+  LifeLineBackgroundColor AliceBlue
+  
+}
+
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment left
+
+
+title Broadcast problem
+
+participant "CC3420 driver\n<i>broadcast</i>" as driver_broadcast
+participant "CC3420 driver\n<i>runicast_broadcast</i>" as driver_runicast
+
+'activate driver_broadcast
+'activate driver_runicast
+activate Broadcast
+
+== Send broadcast ==
+
+Broadcast -> driver_broadcast ++ : broadcast_send
+[<- driver_broadcast : send broadcast
+deactivate driver_broadcast
+
+== Recv broadcast ==
+
+[-> driver_broadcast ++ : recv broadcast
+driver_broadcast -> driver_runicast ++ : Send_runicast\nbroadcast response
+[<- driver_runicast : send runicast
+deactivate driver_broadcast
+[-> driver_runicast -- : Ack
+
+== Recv broadcast reply ==
+
+[-> driver_runicast ++ : recv runicast
+driver_runicast -> driver_runicast : manage rank
+[<- driver_runicast -- : Ack
+
+
+== Possible problem ==
+[-> driver_broadcast ++ : recv broadcast
+driver_broadcast -> driver_runicast ++ : Send_runicast\nbroadcast response
+[<- driver_runicast : send runicast
+deactivate driver_broadcast
+
+[-> driver_broadcast ++ : recv broadcast
+driver_broadcast ->x driver_runicast
+deactivate driver_broadcast
+
+[-> driver_runicast -- : Ack
+
+
+@enduml
