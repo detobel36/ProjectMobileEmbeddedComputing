@@ -1,25 +1,59 @@
 #!/usr/bin/python
 
 import serial
+import argparse
+import traceback
 
-def readSerial(serial):
-    return str(serial.readline().decode('ascii')).strip()
+from sensor import Sensor
 
-if __name__=="__main__":
-    print("Start")
-    ser = serial.Serial()
-    ser.baudrate = 115200
-    ser.port = '/dev/pts/5'
-    ser.open()
 
-    line = readSerial(ser)
-    while(line != ""):
-        print("[DEBUG] Read line: " + line)
-        if(line.startswith('[DATA]')):
-            print("Get data: " + line)
-            ser.write('Test\n'.encode('ascii'))
-            print("Send data")
+class Server:
 
-        line = readSerial(ser)
+    def __init__(self, serialNumber):
+        self.listSensor = dict()
 
-    ser.close()
+        self.serial = serial.Serial()
+        self.serial.baudrate = 115200
+        self.serial.port = '/dev/pts/' + str(serialNumber)
+
+    def start(self):
+        print("Start server")
+        self.serial.open()
+
+    def listen(self):
+        line = self._readSerial()
+        while(line):
+            print("[DEBUG] " + line)
+            if(line.startswith('[DATA]')):
+                print("Get data: " + line)
+                self.serial.write('Test\n'.encode('ascii'))
+                print("Send data")
+
+            line = self._readSerial()
+
+    def stop(self):
+        print("Stopping server")
+        self.serial.close()
+
+    def _readSerial(self):
+        return str(self.serial.readline().decode('ascii')).strip()
+
+    def _writeSerial(self, message):
+        self.serial.write((message.strip() + '\n').encode('ascii'))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('serial', type=int,
+                    help='Serial device of border node (/dev/pts/<serial>)')
+    args = parser.parse_args()
+
+    server = Server(args.serial)
+    server.start()
+
+    try:
+        server.listen()
+    except KeyboardInterrupt:
+        server.stop()
+    except:
+        print("Unexpected error: " + str(traceback.format_exc()))

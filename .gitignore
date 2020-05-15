@@ -28,3 +28,6 @@
 *.z1
 
 *.native
+
+# Python
+*/*/__pycache__
