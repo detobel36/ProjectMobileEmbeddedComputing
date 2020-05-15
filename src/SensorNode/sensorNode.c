@@ -29,10 +29,18 @@ static uint16_t parent_last_rssi;
 
 
 /*---------------------------------------------------------------------------*/
+// Allocate memory
+
+// Doc about list: http://contiki.sourceforge.net/docs/2.6/a01682.html
+MEMB(data_mem, struct data_packet_list, NUM_DATA_IN_QUEUE);
+LIST(data_list);
+
+/*---------------------------------------------------------------------------*/
 // PROCESS
 PROCESS(broadcast_process, "Broadcast process");
-PROCESS(data_process, "Data process");
-AUTOSTART_PROCESSES(&broadcast_process, &data_process);
+PROCESS(collect_data_process, "Collect Data process");
+PROCESS(send_data_process, "Send Data process");
+AUTOSTART_PROCESSES(&broadcast_process, &collect_data_process, &send_data_process);
 /*---------------------------------------------------------------------------*/
 
 
@@ -125,15 +133,22 @@ recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
 {
   struct data_packet *forward_data_packet = packetbuf_dataptr();
 
+  // TODO save children
+
+  linkaddr_t source_addr = forward_data_packet->address;
+
   if(runicast_is_transmitting(&runicast_data)) {
-    // TODO keep history
-    printf("Could not reply to %d.%d, runicast_data is already used\n", from->u8[0], 
+    printf("Could not forward data of %d.%d, runicast_data is already used\n", from->u8[0], 
         from->u8[1]);
+
+    struct data_packet_list *entry = memb_alloc(&data_mem);
+    entry->data = forward_data_packet->data;
+    entry->address = source_addr;
+    list_add(data_list, entry);
     return;
   }
   packetbuf_clear();
   
-  linkaddr_t source_addr = forward_data_packet->address;
   printf("Forward data %d (source: %d.%d) from %d.%d to %d.%d, seqno %d\n", forward_data_packet->data, 
     source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1], parent_addr.u8[0], 
     parent_addr.u8[1], seqno);
@@ -141,33 +156,6 @@ recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
 
   runicast_send(&runicast_data, &parent_addr, MAX_RETRANSMISSIONS);
   packetbuf_clear();
-
-  /* OPTIONAL: Sender history */
-  // struct history_entry *e = NULL;
-  // for(e = list_head(history_table); e != NULL; e = e->next) {
-  //   if(linkaddr_cmp(&e->addr, from)) {
-  //     break;
-  //   }
-  // }
-  // if(e == NULL) {
-  //   /* Create new history entry */
-  //   e = memb_alloc(&history_mem);
-  //   if(e == NULL) {
-  //     e = list_chop(history_table); /* Remove oldest at full history */
-  //   }
-  //   linkaddr_copy(&e->addr, from);
-  //   e->seq = seqno;
-  //   list_push(history_table, e);
-  // } else {
-  //   /* Detect duplicate callback */
-  //   if(e->seq == seqno) {
-  //     printf("runicast message received from %d.%d, seqno %d (DUPLICATE)\n",
-  //      from->u8[0], from->u8[1], seqno);
-  //     return;
-  //   }
-  //   /* Update existing history entry */
-  //   e->seq = seqno;
-  // }
 }
 
 static void
@@ -247,42 +235,75 @@ PROCESS_THREAD(broadcast_process, ev, data)
 /*---------------------------------------------------------------------------*/
 
 /*---------------------------------------------------------------------------*/
-// DATA PROCESS
-PROCESS_THREAD(data_process, ev, data)
+// COLLECT DATA PROCESS
+PROCESS_THREAD(collect_data_process, ev, data)
+{
+  PROCESS_BEGIN();
+
+  static struct etimer et;
+
+  while(1) {
+    etimer_set(&et, CLOCK_SECOND * DATA_COLLECTING_DELAY);
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+
+    // Generates a random int between 0 and 100
+    uint8_t random_int = random_rand() % (100 + 1 - 0) + 0; // (0 for completeness)
+    struct data_packet_list *entry = memb_alloc(&data_mem);
+    entry->data = random_int;
+    entry->address = linkaddr_node_addr;
+    printf("Collect new data %d\n", random_int);
+    list_add(data_list, entry);
+  }
+
+  PROCESS_END();
+}
+/*---------------------------------------------------------------------------*/
+
+/*---------------------------------------------------------------------------*/
+// SEND DATA PROCESS
+PROCESS_THREAD(send_data_process, ev, data)
 {
   PROCESS_EXITHANDLER(runicast_close(&runicast_data);)
   PROCESS_BEGIN();
 
   runicast_open(&runicast_data, RUNICAST_CHANNEL_DATA, &runicast_data_callbacks);
+  list_init(data_list);
+  memb_init(&data_mem);
+
+  static struct etimer et;
 
   while(1) {
-    static struct etimer et;
-
-    // TODO add random to not send all at the same time
     etimer_set(&et, CLOCK_SECOND * DATA_MIN_DELAY + random_rand() % (CLOCK_SECOND * DATA_MAX_DELAY));
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
     if(rank != MAX_RANK) {
-      // Generates a random int between 0 and 100
-      uint8_t random_int = random_rand() % (100 + 1 - 0) + 0; // (0 for completeness)
+      if(list_length(data_list) > 0) {
+        if(runicast_is_transmitting(&runicast_data)) {
+          printf("Runicast data is already used\n");
+        } else {
 
-      if(runicast_is_transmitting(&runicast_data)) {
-        printf("runicast data is already used\n");
-        // TODO create history ?
+          struct data_packet_list *entry = list_pop(data_list);
+          packetbuf_clear();
+
+          struct data_packet packet;
+          packet.data = entry->data;
+          packet.address = entry->address;
+          packetbuf_copyfrom(&packet, sizeof(struct data_packet));
+          
+          runicast_send(&runicast_data, &parent_addr, MAX_RETRANSMISSIONS);
+          if(list_length(data_list) > 0) {
+            printf("Send data %d (%d data in queue)\n", packet.data, list_length(data_list));
+          } else {
+            printf("Send data %d\n", packet.data);
+          }
+          packetbuf_clear();
+        }
+
       } else {
-        packetbuf_clear();
-
-        struct data_packet packet;
-        packet.data = random_int;
-        packet.address = linkaddr_node_addr;
-        packetbuf_copyfrom(&packet, sizeof(struct data_packet));
-        
-        runicast_send(&runicast_data, &parent_addr, MAX_RETRANSMISSIONS);
-        printf("Send random data %d\n", random_int);
-        packetbuf_clear();
+        printf("No data to send\n");
       }
+
     }
-    // SEND DATA
   }
 
   PROCESS_END();

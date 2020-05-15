@@ -1,13 +1,22 @@
 #ifndef constants_c
 #define constants_c
 
+// Number of retransmission before to achieved that a communication is down
 #define MAX_RETRANSMISSIONS 4
-// #define NUM_HISTORY_ENTRIES 4 // Not yet used
+// Number of data that are keep in queue
+#define NUM_DATA_IN_QUEUE 10
+// Delay to broadcast 
+// (this value is used like: minimum = BROADCAST_DELAY and maximum = 2*BROADCAST_DELAY)
 #define BROADCAST_DELAY 15
-#define DATA_MIN_DELAY 40
-#define DATA_MAX_DELAY 70
+// Delay to try to send data (no message if no data)
+#define DATA_MIN_DELAY 10
+#define DATA_MAX_DELAY 30
+// Delay to measure air quality
+#define DATA_COLLECTING_DELAY 60
+// Default rank on start (equals to max rank)
 #define MAX_RANK 255
 
+// Communication channel
 #define BROADCAST_CHANNEL 129
 #define RUNICAST_CHANNEL_BROADCAST 144
 #define RUNICAST_CHANNEL_DATA 154
