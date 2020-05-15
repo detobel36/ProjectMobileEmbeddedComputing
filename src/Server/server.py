@@ -3,8 +3,11 @@
 import serial
 import argparse
 import traceback
+import re
 
 from sensor import Sensor
+
+DEBUG = True
 
 
 class Server:
@@ -17,29 +20,42 @@ class Server:
         self.serial.port = '/dev/pts/' + str(serialNumber)
 
     def start(self):
-        print("Start server")
+        print("[INFO] Start server")
         self.serial.open()
 
     def listen(self):
         line = self._readSerial()
         while(line):
-            print("[DEBUG] " + line)
-            if(line.startswith('[DATA]')):
-                print("Get data: " + line)
-                self.serial.write('Test\n'.encode('ascii'))
-                print("Send data")
+            matchRegex = re.match("\[DATA\] ([0-9\.]*) - ([0-9]{1,2})", line)
+            if(matchRegex and len(matchRegex.groups()) == 2):
+                address, value = matchRegex.groups()
+                print("[INFO] Get value " + value + " from " + address)
+
+                if(address in self.listSensor):
+                    self.listSensor[address].addValue(value)
+                else:
+                    self.listSensor[address] = Sensor(address)
+
+                openValve = self.listSensor[address].getOpenValve()
+                if(openValve != None):
+                    self._writeSerial(openValve)
 
             line = self._readSerial()
 
     def stop(self):
-        print("Stopping server")
+        print("[INFO] Stopping server")
         self.serial.close()
 
     def _readSerial(self):
-        return str(self.serial.readline().decode('ascii')).strip()
+        line = str(self.serial.readline().decode('ascii')).strip()
+        if(DEBUG):
+            print("[DEBUG] Read line: " + line)
+        return line
 
     def _writeSerial(self, message):
-        self.serial.write((message.strip() + '\n').encode('ascii'))
+        if(DEBUG):
+            print("[DEBUG] Send data: " + str(openValve))
+        self.serial.write((str(message).strip() + '\n').encode('ascii'))
 
 
 if __name__ == "__main__":
@@ -56,4 +72,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         server.stop()
     except:
-        print("Unexpected error: " + str(traceback.format_exc()))
+        print("[SEVERE] Unexpected error: " + str(traceback.format_exc()))
