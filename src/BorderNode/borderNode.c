@@ -8,6 +8,7 @@
 
 #include "dev/button-sensor.h"
 #include "dev/leds.h"
+#include "dev/serial-line.h"
 #include "random.h"
 #include <stdbool.h>
 
@@ -30,7 +31,8 @@ static uint8_t rank = 0;
 // PROCESS
 PROCESS(broadcast_process, "Broadcast process");
 PROCESS(runicast_process, "Runicast process");
-AUTOSTART_PROCESSES(&broadcast_process, &runicast_process);
+PROCESS(serialProcess, "Serial communications with server");
+AUTOSTART_PROCESSES(&broadcast_process, &runicast_process, &serialProcess);
 /*---------------------------------------------------------------------------*/
 
 
@@ -86,8 +88,6 @@ timedout_broadcast_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8
 
 
 
-
-
 /*---------------------------------------------------------------------------*/
 // RUNICAST
 
@@ -99,6 +99,7 @@ recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
   linkaddr_t address = data_packet->address;
   printf("Receive data packet from: %d.%d with value: %d (seqno %d)\n", address.u8[0], 
     address.u8[1], data_packet->data, seqno);
+  printf("[DATA] %d.%d - %d\n", address.u8[0], address.u8[1], data_packet->data);
 }
 
 static void
@@ -164,3 +165,21 @@ PROCESS_THREAD(runicast_process, ev, data)
 
   PROCESS_END();
 }
+
+
+PROCESS_THREAD(serialProcess, ev, data)
+{
+    PROCESS_BEGIN();
+
+    while(1) {
+        PROCESS_YIELD();
+        if(ev == serial_line_event_message) {
+          char* receivedData = (char *) data;
+          printf("received line %s\n", receivedData);
+        }
+        // write(mymote, "ls");
+    }
+
+    PROCESS_END();
+}
+
