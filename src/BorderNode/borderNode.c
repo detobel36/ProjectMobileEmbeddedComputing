@@ -23,6 +23,7 @@
 static struct broadcast_conn broadcast;
 static struct runicast_conn runicast_broadcast;
 static struct runicast_conn runicast_data;
+static struct runicast_conn runicast_valve;
 static uint8_t rank = 0;
 /*---------------------------------------------------------------------------*/
 

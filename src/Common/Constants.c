@@ -15,10 +15,13 @@
 #define DATA_COLLECTING_DELAY 60
 // Default rank on start (equals to max rank)
 #define MAX_RANK 255
+// Max size of the network (border node need to have all children)
+#define NUM_MAX_CHILDREN 100
 
 // Communication channel
-#define BROADCAST_CHANNEL 129
-#define RUNICAST_CHANNEL_BROADCAST 144
-#define RUNICAST_CHANNEL_DATA 154
+#define BROADCAST_CHANNEL 129          // Broadcast to know parent
+#define RUNICAST_CHANNEL_BROADCAST 144 // Channel to reply to broadcast
+#define RUNICAST_CHANNEL_DATA 154      // Channel to send data
+#define RUNICAST_CHANNEL_VALVE 164     // Channel to receive valve data
 
 #endif
