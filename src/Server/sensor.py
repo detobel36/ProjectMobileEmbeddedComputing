@@ -9,7 +9,6 @@ THRESHOLD = -5
 
 """
 TODO:
-- Made computation
 - Remove old unused values
 """
 
