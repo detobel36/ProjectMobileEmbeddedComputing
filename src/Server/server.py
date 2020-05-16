@@ -37,8 +37,8 @@ class Server:
                     self.listSensor[address] = Sensor(address)
 
                 openValve = self.listSensor[address].getOpenValve()
-                if(openValve != None):
-                    self._writeSerial(openValve)
+                if(openValve != None and openValve):
+                    self._writeSerial(address)
 
             line = self._readSerial()
 
@@ -48,13 +48,13 @@ class Server:
 
     def _readSerial(self):
         line = str(self.serial.readline().decode('ascii')).strip()
-        if(DEBUG):
-            print("[DEBUG] Read line: " + line)
+        # if(DEBUG):
+        #     print("[DEBUG] Read line: " + line)
         return line
 
     def _writeSerial(self, message):
         if(DEBUG):
-            print("[DEBUG] Send data: " + str(openValve))
+            print("[DEBUG] Send data: " + str(message))
         self.serial.write((str(message).strip() + '\n').encode('ascii'))
 
 
@@ -71,5 +71,5 @@ if __name__ == "__main__":
         server.listen()
     except KeyboardInterrupt:
         server.stop()
-    except:
-        print("[SEVERE] Unexpected error: " + str(traceback.format_exc()))
+    # except:
+    #     print("[SEVERE] Unexpected error: " + str(traceback.format_exc()))

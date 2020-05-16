@@ -3,8 +3,10 @@
 import numpy as np
 
 DEBUG = True
-NUMBER_VALUE_TO_EVAL = 30
-THRESHOLD = -5
+#NUMBER_VALUE_TO_EVAL = 30
+NUMBER_VALUE_TO_EVAL = 5  # For test
+# THRESHOLD = -5
+THRESHOLD = 1000000
 
 
 """
@@ -20,7 +22,7 @@ class Sensor:
         self.listValues = list()
 
     def addValue(self, value):
-        self.listValues.append(value)
+        self.listValues.append(int(value))
         if(DEBUG):
             print("[DEBUG] (" + str(self.address) + ") Add value " + str(value) + " " + \
                 "(total " + str(len(self.listValues)) + ")")
