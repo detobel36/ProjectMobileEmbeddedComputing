@@ -78,7 +78,8 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 
   // Check that transmission already exist
   if(runicast_is_transmitting(&runicast_broadcast)) {
-    printf("Could not reply to %d.%d, runicast_broadcast is already used\n", from->u8[0], 
+    printf("[WARN - Border] Could not reply to %d.%d, runicast_broadcast is already used\n", 
+      from->u8[0], 
         from->u8[1]);
     return;
   }
@@ -88,7 +89,7 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   packet_response.rank = rank;
 
   packetbuf_copyfrom(&packet_response, sizeof(struct rank_packet));
-  printf("Send response to broadcast\n");
+  printf("[INFO - Border] Send response to broadcast\n");
   runicast_send(&runicast_broadcast, from, MAX_RETRANSMISSIONS);
   packetbuf_clear();
 }
@@ -100,20 +101,20 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 static void
 recv_broadcast_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
 {
-  printf("Not normal to be here\n");
+  printf("[SEVERE - Border] Not normal to be here\n");
 }
 
 static void
 sent_broadcast_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("runicast broadcast message sent to %d.%d, retransmissions %d\n",
+  printf("[INFO - Border] runicast broadcast message sent to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
 }
 
 static void
 timedout_broadcast_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("runicast broadcast message timed out when sending to %d.%d, retransmissions %d\n",
+  printf("[INFO - Border] runicast broadcast message timed out when sending to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
 }
 
@@ -137,7 +138,8 @@ recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
     child_entry->address_to_contact = *from;
     child_entry->address_destination = source_addr;
     list_add(children_list, child_entry);
-    printf("Save new child %d.%d (using node %d.%d)\n", source_addr.u8[0], source_addr.u8[1],
+    printf("[DEBUG - Border] Save new child %d.%d (using node %d.%d)\n", 
+      source_addr.u8[0], source_addr.u8[1],
       from->u8[0], from->u8[1]);
 
   } else if(linkaddr_cmp(&child->address_to_contact, from)) {
@@ -147,7 +149,7 @@ recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
     child->address_to_contact = *from;
   }
 
-  printf("Receive data packet from: %d.%d with value: %d (seqno %d)\n", source_addr.u8[0], 
+  printf("[INFO - Border] Receive data packet from: %d.%d with value: %d (seqno %d)\n", source_addr.u8[0], 
     source_addr.u8[1], data_packet->data, seqno);
   printf("[DATA] %d.%d - %d\n", source_addr.u8[0], source_addr.u8[1], data_packet->data);
 }
@@ -155,34 +157,34 @@ recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
 static void
 sent_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("runicast data message sent to %d.%d, retransmissions %d\n",
+  printf("[INFO - Border] runicast data message sent to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
 }
 
 static void
 timedout_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("runicast data message timed out when sending to %d.%d, retransmissions %d\n",
+  printf("[INFO - Border] runicast data message timed out when sending to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
 }
 
 static void
 recv_valve_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
 {
-  printf("Not normal to be here\n");
+  printf("[SEVERE - Border] Not normal to be here\n");
 }
 
 static void
 sent_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("runicast valve message sent to %d.%d, retransmissions %d\n",
+  printf("[INFO - Border] runicast valve message sent to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
 }
 
 static void
 timedout_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("runicast valve message timed out when sending to %d.%d, retransmissions %d\n",
+  printf("[INFO - Border] runicast valve message timed out when sending to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
 }
 
@@ -239,7 +241,7 @@ PROCESS_THREAD(send_data_process, ev, data)
 
     if(list_length(valve_list) > 0) {
       if(runicast_is_transmitting(&runicast_valve)) {
-        printf("Runicast valve is already used\n");
+        printf("[INFO - Border] Runicast valve is already used\n");
       } else {
 
         struct valve_packet_entry *entry = list_pop(valve_list);
@@ -248,7 +250,7 @@ PROCESS_THREAD(send_data_process, ev, data)
         struct children_entry *child = get_child_entry(entry->address_u8_0, entry->address_u8_1);
 
         if(child == NULL) {
-          printf("[WARN] Could not send packet to %d.%d. Destination unknow\n", 
+          printf("[WARN - Border] Could not send packet to %d.%d. Destination unknow\n", 
             entry->address_u8_0, entry->address_u8_1);
         } else {
           linkaddr_t address_destination = child->address_destination;
@@ -260,10 +262,10 @@ PROCESS_THREAD(send_data_process, ev, data)
 
           runicast_send(&runicast_valve, &address_to_contact, MAX_RETRANSMISSIONS);
           if(list_length(valve_list) > 0) {
-            printf("Send valve information with destination %d.%d (%d data in queue)\n", 
+            printf("[INFO - Border] Send valve information with destination %d.%d (%d data in queue)\n", 
               address_destination.u8[0], address_destination.u8[1], list_length(valve_list));
           } else {
-            printf("Send valve information with destination %d.%d\n", 
+            printf("[INFO - Border] Send valve information with destination %d.%d\n", 
               address_destination.u8[0], address_destination.u8[1]);
           }
           packetbuf_clear();
@@ -272,7 +274,7 @@ PROCESS_THREAD(send_data_process, ev, data)
       }
 
     } else {
-      printf("No data to send\n");
+      printf("[INFO - Border] No data to send\n");
     }
 
   }
@@ -300,7 +302,7 @@ PROCESS_THREAD(serialProcess, ev, data)
           u8_split = strtok(NULL, ".");
           uint8_t u8_1 = char_to_int(u8_split);
 
-          printf("Open valve of: %d.%d\n", u8_0, u8_1);
+          printf("[INFO - Border] Open valve of: %d.%d\n", u8_0, u8_1);
 
           struct valve_packet_entry *valve_entry = memb_alloc(&valve_mem);
           valve_entry->address_u8_0 = u8_0;
