@@ -48,8 +48,8 @@ class Server:
 
     def _readSerial(self):
         line = str(self.serial.readline().decode('ascii')).strip()
-        if(DEBUG):
-            print("[DEBUG] Read line: " + line)
+        # if(DEBUG):
+        #     print("[DEBUG] Read line: " + line)
         return line
 
     def _writeSerial(self, message):

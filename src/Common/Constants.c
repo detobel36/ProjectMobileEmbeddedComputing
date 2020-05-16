@@ -11,6 +11,9 @@
 // Delay to try to send data (no message if no data)
 #define DATA_MIN_DELAY 10
 #define DATA_MAX_DELAY 30
+// Delay to try to send valve (no message if no valve data)
+#define VALVE_MIN_DELAY 5
+#define VALVE_MAX_DELAY 15
 // Delay to measure air quality
 #define DATA_COLLECTING_DELAY 60
 // Default rank on start (equals to max rank)

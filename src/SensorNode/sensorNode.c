@@ -362,7 +362,8 @@ PROCESS_THREAD(collect_data_process, ev, data)
     struct data_packet_entry *entry = memb_alloc(&data_mem);
     entry->data = random_int;
     entry->address = linkaddr_node_addr;
-    printf("[INFO - Sensor] Collect new data %d\n", random_int);
+    printf("[INFO - Sensor] Collect new data %d (%d data already in queue)\n", random_int, 
+      list_length(data_list));
     list_add(data_list, entry);
   }
 
@@ -394,6 +395,7 @@ PROCESS_THREAD(send_data_process, ev, data)
         } else {
 
           struct data_packet_entry *entry = list_pop(data_list);
+          memb_free(&data_mem, entry);
           packetbuf_clear();
 
           struct data_packet packet;

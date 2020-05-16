@@ -236,7 +236,7 @@ PROCESS_THREAD(send_data_process, ev, data)
   static struct etimer et;
 
   while(1) {
-    etimer_set(&et, CLOCK_SECOND * DATA_MIN_DELAY + random_rand() % (CLOCK_SECOND * DATA_MAX_DELAY));
+    etimer_set(&et, CLOCK_SECOND * VALVE_MIN_DELAY + random_rand() % (CLOCK_SECOND * VALVE_MAX_DELAY));
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
     if(list_length(valve_list) > 0) {
@@ -274,7 +274,7 @@ PROCESS_THREAD(send_data_process, ev, data)
       }
 
     } else {
-      printf("[INFO - Border] No data to send\n");
+      printf("[INFO - Border] No valve to send\n");
     }
 
   }
