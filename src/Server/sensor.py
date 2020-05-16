@@ -3,7 +3,8 @@
 import numpy as np
 
 DEBUG = True
-NUMBER_VALUE_TO_EVAL = 30
+#NUMBER_VALUE_TO_EVAL = 30
+NUMBER_VALUE_TO_EVAL = 5  # For test
 THRESHOLD = -5
 
 

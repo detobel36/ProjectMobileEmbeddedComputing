@@ -38,6 +38,7 @@ LIST(data_list);
 
 MEMB(children_mem, struct children_entry, NUM_MAX_CHILDREN);
 LIST(children_list);
+/*---------------------------------------------------------------------------*/
 
 
 /*---------------------------------------------------------------------------*/
@@ -48,6 +49,7 @@ PROCESS(valve_data_process, "Valve Data process");
 PROCESS(send_data_process, "Send Data process");
 AUTOSTART_PROCESSES(&broadcast_process, &collect_data_process, &send_data_process, &valve_data_process);
 /*---------------------------------------------------------------------------*/
+
 
 /*---------------------------------------------------------------------------*/
 // UTILS
@@ -62,7 +64,6 @@ static struct children_entry* get_child_entry(const linkaddr_t *destination_addr
 }
 
 /*---------------------------------------------------------------------------*/
-
 
 
 /*---------------------------------------------------------------------------*/
