@@ -147,7 +147,7 @@ sent_broadcast_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t r
 static void
 timedout_broadcast_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[INFO - Sensor] runicast broadcast message timed out when sending to %d.%d, retransmissions %d\n",
+  printf("[WARN - Sensor] runicast broadcast message timed out when sending to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
 }
 
@@ -210,8 +210,9 @@ sent_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retran
 static void
 timedout_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[INFO - Sensor] runicast data message timed out when sending to %d.%d, retransmissions %d\n",
+  printf("[WANR - Sensor] runicast data message timed out when sending to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
+  // TODO change tree and keep package ?
 }
 
 /*---------------------------------------------------------------------------*/
@@ -274,7 +275,7 @@ timedout_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t r
 {
   // struct valve_packet *forward_valve_packet = packetbuf_dataptr();
 
-  printf("[INFO - Sensor] runicast valve message timed out when sending to child %d.%d, retransmissions %d\n",
+  printf("[WARN - Sensor] runicast valve message timed out when sending to child %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
 
   // TODO remove children from the list (if contact/destination address are still the same)
@@ -434,7 +435,7 @@ PROCESS_THREAD(valve_data_process, ev, data)
   runicast_open(&runicast_valve, RUNICAST_CHANNEL_VALVE, &runicast_valve_callbacks);
   list_init(children_list);
   memb_init(&children_mem);
-  
+
   list_init(valve_list);
   memb_init(&valve_mem);
 
@@ -448,7 +449,7 @@ PROCESS_THREAD(valve_data_process, ev, data)
 
     if(list_length(valve_list) > 0) {
       if(runicast_is_transmitting(&runicast_valve)) {
-        printf("Runicast valve is already used\n");
+        printf("[INFO - Sensor] Runicast valve is already used\n");
       } else {
 
         struct valve_packet_address_entry *entry = list_pop(valve_list);
@@ -463,9 +464,8 @@ PROCESS_THREAD(valve_data_process, ev, data)
         } else {
           linkaddr_t address_to_contact = child->address_to_contact;
 
-          printf("[INFO - Sensor] Send valve information from %d.%d to %d.%d (%d valve in queue)\n", 
-            from->u8[0], from->u8[1], address_to_contact.u8[0], address_to_contact.u8[1], 
-            list_length(valve_list));
+          printf("[INFO - Sensor] Send valve information to %d.%d (%d valve in queue)\n", 
+            address_to_contact.u8[0], address_to_contact.u8[1], list_length(valve_list));
 
           struct valve_packet packet;
           packet.address = destination_addr;
@@ -478,7 +478,7 @@ PROCESS_THREAD(valve_data_process, ev, data)
       }
 
     } else {
-      printf("No valve data to send\n");
+      printf("[INFO - Sensor] No valve data to send\n");
     }
 
   }
