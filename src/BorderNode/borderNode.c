@@ -42,7 +42,6 @@ LIST(children_list);
 
 /*---------------------------------------------------------------------------*/
 // PROCESS
-// PROCESS(broadcast_process, "Broadcast process");
 PROCESS(send_data_process, "Send data process");
 PROCESS(serialProcess, "Serial communications with server");
 AUTOSTART_PROCESSES(&send_data_process, &serialProcess);
@@ -53,7 +52,14 @@ AUTOSTART_PROCESSES(&send_data_process, &serialProcess);
 // UTILS
 static uint8_t char_to_int(char* char_text)
 {
-  return (uint8_t) *char_text - '0';
+  uint8_t result = 0;
+  int i;
+  for (i = 0; i < strlen(char_text); ++i) {
+    result = result*10;
+    result += (char_text[i] - '0');
+  }
+
+  return result;
 }
 
 // TODO redondant with sensorNode
@@ -302,7 +308,7 @@ PROCESS_THREAD(serialProcess, ev, data)
           u8_split = strtok(NULL, ".");
           uint8_t u8_1 = char_to_int(u8_split);
 
-          printf("[INFO - Border] Open valve of: %d.%d\n", u8_0, u8_1);
+          printf("[INFO - Border] Open valve of node: %d.%d\n", u8_0, u8_1);
 
           struct valve_packet_entry *valve_entry = memb_alloc(&valve_mem);
           valve_entry->address_u8_0 = u8_0;

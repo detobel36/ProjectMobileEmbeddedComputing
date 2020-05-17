@@ -37,6 +37,12 @@ struct valve_packet_entry
     uint8_t address_u8_1;
 };
 
+struct valve_packet_address_entry
+{
+    struct valve_packet_address_entry *next;
+    linkaddr_t address;
+};
+
 struct children_entry
 {
     struct children_entry *next;
