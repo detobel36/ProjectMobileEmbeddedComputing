@@ -5,9 +5,12 @@
 #define MAX_RETRANSMISSIONS 4
 // Number of data that are keep in queue
 #define NUM_DATA_IN_QUEUE 10
+
 // Delay to broadcast 
-// (this value is used like: minimum = BROADCAST_DELAY and maximum = 2*BROADCAST_DELAY)
+// (this value is used like: minimum = BROADCAST_DELAY and maximum = 2*BROADCAST_DELAY when 
+// rank is not define and otherwise minimum = 4*BROADCAST_DELAY and maximum = 8*BROADCAST_DELAY)
 #define BROADCAST_DELAY 15
+
 // Delay to try to send data (no message if no data)
 #define DATA_MIN_DELAY 10
 #define DATA_MAX_DELAY 30
