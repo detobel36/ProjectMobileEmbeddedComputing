@@ -214,7 +214,7 @@ timedout_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t re
   printf("[WARN - Sensor] Problem to send message to parent (%d.%d, retransmissions %d). Reset rank !\n", 
     to->u8[0], to->u8[1], retransmissions);
   rank = MAX_RANK;
-  parent_addr = NULL;
+  parent_addr = linkaddr_null;
 
   // TODO inform children
 }
