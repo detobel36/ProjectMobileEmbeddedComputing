@@ -210,9 +210,13 @@ sent_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retran
 static void
 timedout_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[WANR - Sensor] runicast data message timed out when sending to %d.%d, retransmissions %d\n",
-   to->u8[0], to->u8[1], retransmissions);
-  // TODO change tree and keep package ?
+
+  printf("[WARN - Sensor] Problem to send message to parent (%d.%d, retransmissions %d). Reset rank !\n", 
+    to->u8[0], to->u8[1], retransmissions);
+  rank = MAX_RANK;
+  parent_addr = linkaddr_null;
+
+  // TODO inform children
 }
 
 /*---------------------------------------------------------------------------*/
