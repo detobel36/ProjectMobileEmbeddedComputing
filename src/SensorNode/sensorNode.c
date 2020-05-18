@@ -26,6 +26,7 @@ static struct runicast_conn runicast_valve;
 static uint8_t rank = MAX_RANK;
 static linkaddr_t parent_addr;
 static uint16_t parent_last_rssi;
+static process_event_t new_data_event;
 /*---------------------------------------------------------------------------*/
 
 
@@ -79,7 +80,7 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   if(rank != MAX_RANK) {
     if(runicast_is_transmitting(&runicast_broadcast)) {
       // printf("wait runicast_broadcast %s\n", PROCESS_CURRENT()->name);
-      printf("[WARN - Sensor] Could not reply to %d.%d, runicast_broadcast is already used\n", 
+      printf("[INFO - Sensor] Could not reply to %d.%d, runicast_broadcast is already used\n", 
         from->u8[0], from->u8[1]);
       return;
     }
@@ -114,6 +115,9 @@ recv_broadcast_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t
     parent_addr = *from;
     parent_last_rssi = current_rssi;
     printf("[INFO - Sensor] Init rank: %d (quality: %d)\n", rank, current_rssi);
+
+    // Wake up send of data if parent was lost
+    process_poll(&send_data_process);
 
   // If broadcast from parent
   } else if(linkaddr_cmp(&parent_addr, from)) {
@@ -179,24 +183,19 @@ recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
     child->address_to_contact = *from;
   }
 
-  if(runicast_is_transmitting(&runicast_data)) {
-    printf("[WARN - Sensor] Could not forward data of %d.%d, runicast_data is already used\n", 
-      from->u8[0], from->u8[1]);
-
-    struct data_packet_entry *data_entry = memb_alloc(&data_mem);
-    data_entry->data = forward_data_packet->data;
-    data_entry->address = source_addr;
-    list_add(data_list, data_entry);
-    return;
-  }
-  packetbuf_clear();
-  
-  printf("[INFO - Sensor] Forward data %d (source: %d.%d) from %d.%d to %d.%d, seqno %d\n", 
+  printf("[INFO - Sensor] Get data to forward %d (source: %d.%d) from %d.%d to %d.%d, seqno %d\n", 
     forward_data_packet->data, source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1], 
     parent_addr.u8[0], parent_addr.u8[1], seqno);
-  packetbuf_copyfrom(forward_data_packet, sizeof(struct data_packet));
+  struct data_packet_entry *data_entry = memb_alloc(&data_mem);
+  data_entry->data = forward_data_packet->data;
+  data_entry->address = source_addr;
+  list_add(data_list, data_entry);
 
-  runicast_send(&runicast_data, &parent_addr, MAX_RETRANSMISSIONS);
+  // If nothing is transmit
+  if(!runicast_is_transmitting(&runicast_data)) {
+    process_poll(&send_data_process);
+  }
+
   packetbuf_clear();
 }
 
@@ -205,16 +204,20 @@ sent_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retran
 {
   printf("[INFO - Sensor] runicast data message sent to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
+
+  process_poll(&send_data_process);
 }
 
 static void
 timedout_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-
-  printf("[WARN - Sensor] Problem to send message to parent (%d.%d, retransmissions %d). Reset rank !\n", 
+  printf("[WARN - Sensor] Problem to send data to parent (%d.%d, retransmissions %d). Reset rank !\n", 
     to->u8[0], to->u8[1], retransmissions);
   rank = MAX_RANK;
   parent_addr = linkaddr_null;
+
+  // Wake up broadcast system
+  process_poll(&broadcast_process);
 
   // TODO inform children
 }
@@ -237,7 +240,7 @@ recv_valve_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seq
 
   } else {
     if(runicast_is_transmitting(&runicast_valve)) {
-      printf("[WARN - Sensor] Could not forward valve of %d.%d, runicast_valve is already used\n", 
+      printf("[INFO - Sensor] Could not forward valve of %d.%d, runicast_valve is already used\n", 
         from->u8[0], from->u8[1]);
 
       struct valve_packet_address_entry *entry = memb_alloc(&valve_mem);
@@ -332,18 +335,21 @@ PROCESS_THREAD(broadcast_process, ev, data)
 
   while(1) {
 
-    // struct general_packet packet;
-    // packet.type = DISCOVERY_REQ;
-    // packet.rank = rank;
-    // packetbuf_copyfrom(&packet, sizeof(struct general_packet));
     broadcast_send(&broadcast);
     printf("[DEBUG - Sensor] broadcast message sent\n");
 
-    /* Delay between BROADCAST_DELAY and 2*BROADCAST_DELAY seconds */
-    // TODO may be add more time
-    etimer_set(&et, CLOCK_SECOND * BROADCAST_DELAY + random_rand() % (CLOCK_SECOND * BROADCAST_DELAY));
+    // If no rank
+    if(rank == MAX_RANK) {
+      /* Delay between BROADCAST_DELAY and 2*BROADCAST_DELAY seconds */
+      etimer_set(&et, CLOCK_SECOND * BROADCAST_DELAY + random_rand() % (CLOCK_SECOND * BROADCAST_DELAY));
+    } else {
+      /* Delay between BROADCAST_DELAY*4 and 8*BROADCAST_DELAY seconds */
+      etimer_set(&et, CLOCK_SECOND * (BROADCAST_DELAY*4) + random_rand() % (CLOCK_SECOND * (BROADCAST_DELAY*4)));
+    }
 
-    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+    // Wait end of timer of manual call
+    // PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+    PROCESS_WAIT_EVENT();
   }
 
   PROCESS_END();
@@ -357,6 +363,7 @@ PROCESS_THREAD(collect_data_process, ev, data)
   PROCESS_BEGIN();
 
   static struct etimer et;
+  new_data_event = process_alloc_event();
 
   while(1) {
     etimer_set(&et, CLOCK_SECOND * DATA_COLLECTING_DELAY);
@@ -370,6 +377,10 @@ PROCESS_THREAD(collect_data_process, ev, data)
     printf("[INFO - Sensor] Collect new data %d (%d data already in queue)\n", random_int, 
       list_length(data_list));
     list_add(data_list, entry);
+
+    if(!runicast_is_transmitting(&runicast_data)) {
+      process_post(&send_data_process, new_data_event, NULL);
+    }
   }
 
   PROCESS_END();
@@ -390,39 +401,44 @@ PROCESS_THREAD(send_data_process, ev, data)
   static struct etimer et;
 
   while(1) {
-    etimer_set(&et, CLOCK_SECOND * DATA_MIN_DELAY + random_rand() % (CLOCK_SECOND * DATA_MAX_DELAY));
-    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+    // etimer_set(&et, CLOCK_SECOND * DATA_MIN_DELAY + random_rand() % (CLOCK_SECOND * DATA_MAX_DELAY));
+    // PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+    // PROCESS_YIELD();
+    PROCESS_WAIT_EVENT();
+    if (ev == new_data_event) {
+      printf("[DEBUG - Sensor] Wake up because of new value !\n");
+      etimer_set(&et, random_rand() % (CLOCK_SECOND * DATA_MAX_DELAY));
+      PROCESS_WAIT_EVENT();
+      printf("[DEBUG - Sensor] end timer or event\n");
+    } else {
+      printf("[DEBUG - Sensor] Wake up send_data_process\n");
+    }
 
     if(rank != MAX_RANK) {
-      if(list_length(data_list) > 0) {
-        if(runicast_is_transmitting(&runicast_data)) {
-          printf("[INFO - Sensor] Runicast data is already used\n");
-        } else {
-
-          struct data_packet_entry *entry = list_pop(data_list);
-          memb_free(&data_mem, entry);
-          packetbuf_clear();
-
-          struct data_packet packet;
-          packet.data = entry->data;
-          packet.address = entry->address;
-          packetbuf_copyfrom(&packet, sizeof(struct data_packet));
-          
-          runicast_send(&runicast_data, &parent_addr, MAX_RETRANSMISSIONS);
-          if(list_length(data_list) > 0) {
-            printf("[INFO - Sensor] Send data %d (%d data in queue)\n", packet.data, 
-              list_length(data_list));
-          } else {
-            printf("[INFO - Sensor] Send data %d\n", packet.data);
-          }
-          packetbuf_clear();
+      while(list_length(data_list) > 0) {
+        while (runicast_is_transmitting(&runicast_data)) {
+          printf("[DEBUG - Sensor] Wait runicast_data: %s\n", PROCESS_CURRENT()->name);
+          PROCESS_WAIT_EVENT();
+          printf("[DEBUG - Sensor] Wake up send_data_process end of transmitting\n");
         }
 
-      } else {
-        printf("[INFO - Sensor] No data to send\n");
+        struct data_packet_entry *entry = list_pop(data_list);
+        memb_free(&data_mem, entry);
+        packetbuf_clear();
+
+        struct data_packet packet;
+        packet.data = entry->data;
+        packet.address = entry->address;
+        packetbuf_copyfrom(&packet, sizeof(struct data_packet));
+        
+        runicast_send(&runicast_data, &parent_addr, MAX_RETRANSMISSIONS);
+        printf("[INFO - Sensor] Send data %d (%d data in queue)\n", packet.data, 
+            list_length(data_list));
+        packetbuf_clear();
       }
 
     }
+
   }
 
   PROCESS_END();
@@ -443,7 +459,7 @@ PROCESS_THREAD(valve_data_process, ev, data)
   list_init(valve_list);
   memb_init(&valve_mem);
 
-  PROCESS_WAIT_EVENT_UNTIL(0);
+  // PROCESS_WAIT_EVENT_UNTIL(0);
 
   static struct etimer et;
 

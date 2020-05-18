@@ -155,9 +155,11 @@ recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
     child->address_to_contact = *from;
   }
 
-  printf("[INFO - Border] Receive data packet from: %d.%d with value: %d (seqno %d)\n", source_addr.u8[0], 
-    source_addr.u8[1], data_packet->data, seqno);
+  printf("[INFO - Border] Receive data %d (source %d.%d) from: %d.%d (seqno %d)\n", 
+    data_packet->data, source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1], seqno);
   printf("[DATA] %d.%d - %d\n", source_addr.u8[0], source_addr.u8[1], data_packet->data);
+
+  packetbuf_clear();
 }
 
 static void
