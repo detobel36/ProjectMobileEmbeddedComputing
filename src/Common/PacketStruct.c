@@ -23,6 +23,13 @@ struct valve_packet
 
 //// LIST ////
 
+struct rank_packet_entry
+{
+    struct rank_packet_entry *next;
+    uint8_t rank;
+    linkaddr_t destination;
+};
+
 struct data_packet_entry
 {
     struct data_packet_entry *next;
