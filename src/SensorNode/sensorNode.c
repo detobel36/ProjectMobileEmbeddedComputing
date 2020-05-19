@@ -27,6 +27,7 @@ static uint8_t rank = MAX_RANK;
 static linkaddr_t parent_addr;
 static uint16_t parent_last_rssi;
 static process_event_t new_data_event;
+static process_event_t broadcast_event;
 /*---------------------------------------------------------------------------*/
 
 
@@ -76,6 +77,30 @@ static void resetRank() {
   rank = MAX_RANK;
   parent_addr = linkaddr_null;
 
+  struct children_entry *child;
+  while (list_length(children_list) > 0) {
+    child = list_pop(children_list);
+    
+    // If child is direct linked
+    if(linkaddr_cmp(&child->address_destination, &child->address_to_contact)) {
+      struct rank_packet_entry *rank_packet = memb_alloc(&rank_mem);
+      rank_packet->destination = child->address_to_contact;
+
+      printf("[DEBUG - Sensor] Inform children %d.%d that rank have been reset\n", 
+        child->address_to_contact.u8[0], child->address_to_contact.u8[1]);
+
+      // list_add add element at the end of the list
+      // list_push add element at the begining (first inform children before to try to send to parent)
+      list_push(rank_list, rank_packet);
+    }
+
+  }
+
+  // Wake up process to inform children
+  if(!runicast_is_transmitting(&runicast_rank)) {
+    process_post(&rank_process, broadcast_event, NULL);
+  }
+
   // Wake up broadcast system
   process_poll(&broadcast_process);
 }
@@ -91,14 +116,18 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
   // Respond to broadcast
   if(rank != MAX_RANK) {
-    struct rank_packet_entry *packet_response = memb_alloc(&rank_mem);
-    packet_response->destination = *from;
-    printf("[INFO - Sensor] Create response rank for %d.%d\n", from->u8[0], from->u8[1]);
-    list_add(data_list, entry);
-    packetbuf_clear();
+    if(linkaddr_cmp(from, &parent_addr)) {
+      printf("[DEBUG - Sensor] Do not send broadcast response to parent\n");
+    } else {
+      struct rank_packet_entry *packet_response = memb_alloc(&rank_mem);
+      packet_response->destination = *from;
+      printf("[INFO - Sensor] Create response rank for %d.%d\n", from->u8[0], from->u8[1]);
+      list_add(rank_list, packet_response);
+      packetbuf_clear();
 
-    if(!runicast_is_transmitting(&runicast_rank)) {
-      process_poll(&rank_process);
+      if(!runicast_is_transmitting(&runicast_rank)) {
+        process_poll(&rank_process);
+      }
     }
 
   }
@@ -162,6 +191,8 @@ sent_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retran
 {
   printf("[INFO - Sensor] runicast rank message sent to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
+
+  process_poll(&rank_process);
 }
 
 static void
@@ -169,6 +200,8 @@ timedout_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t re
 {
   printf("[WARN - Sensor] runicast rank message timed out when sending to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
+
+  process_poll(&rank_process);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -230,8 +263,6 @@ timedout_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t re
   printf("[WARN - Sensor] Problem to send data to parent (%d.%d, retransmissions %d). Reset rank !\n", 
     to->u8[0], to->u8[1], retransmissions);
   resetRank();
-
-  // TODO inform children
 }
 
 /*---------------------------------------------------------------------------*/
@@ -356,12 +387,12 @@ PROCESS_THREAD(broadcast_process, ev, data)
 // SEND RANK RESPONSE
 PROCESS_THREAD(rank_process, ev, data)
 {
-  static struct etimer et;
-
   PROCESS_EXITHANDLER(runicast_close(&runicast_rank);)
 
   PROCESS_BEGIN();
 
+  static struct etimer et;
+  broadcast_event = process_alloc_event();
   runicast_open(&runicast_rank, RUNICAST_CHANNEL_BROADCAST, &runicast_rank_callbacks);
 
   list_init(rank_list);
@@ -372,12 +403,22 @@ PROCESS_THREAD(rank_process, ev, data)
     PROCESS_WAIT_EVENT();
     printf("[DEBUG - Sensor] Wake up rank_process\n");
 
+    // If process is wake up to directly reply to broadcast event
+    if(ev == broadcast_event) {
+      printf("[DEBUG - Sensor] Wake up rank_process due to broadcast event\n")
+      // Add delay to reply
+      etimer_set(&et, random_rand() % (CLOCK_SECOND * BROADCAST_REPLY_DELAY));
+      // If event or timer
+      PROCESS_WAIT_EVENT();
+    }
+
     while(list_length(rank_list) > 0) {
       while (runicast_is_transmitting(&runicast_rank)) {
         printf("[DEBUG - Sensor] Wait runicast_rank: %s\n", PROCESS_CURRENT()->name);
         PROCESS_WAIT_EVENT();
         printf("[DEBUG - Sensor] Wake up rank_process end of transmitting\n");
       }
+
 
       struct rank_packet_entry *entry = list_pop(rank_list);
       linkaddr_t destination_addr = entry->destination;

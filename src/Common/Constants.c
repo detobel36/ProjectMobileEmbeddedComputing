@@ -10,6 +10,8 @@
 // (this value is used like: minimum = BROADCAST_DELAY and maximum = 2*BROADCAST_DELAY when 
 // rank is not define and otherwise minimum = 4*BROADCAST_DELAY and maximum = 8*BROADCAST_DELAY)
 #define BROADCAST_DELAY 15
+// Add delay to reply to broadcast (to avoid collision), between 0 and BROADCAST_REPLY_DELAY
+#define BROADCAST_REPLY_DELAY 10
 
 // Delay to try to send data (no message if no data)
 #define DATA_MIN_DELAY 10
