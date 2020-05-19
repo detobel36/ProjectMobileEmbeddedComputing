@@ -26,7 +26,6 @@ struct valve_packet
 struct rank_packet_entry
 {
     struct rank_packet_entry *next;
-    uint8_t rank;
     linkaddr_t destination;
 };
 
