@@ -405,7 +405,7 @@ PROCESS_THREAD(rank_process, ev, data)
 
     // If process is wake up to directly reply to broadcast event
     if(ev == broadcast_event) {
-      printf("[DEBUG - Sensor] Wake up rank_process due to broadcast event\n")
+      printf("[DEBUG - Sensor] Wake up rank_process due to broadcast event\n");
       // Add delay to reply
       etimer_set(&et, random_rand() % (CLOCK_SECOND * BROADCAST_REPLY_DELAY));
       // If event or timer
