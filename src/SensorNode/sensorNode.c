@@ -94,6 +94,7 @@ static void resetRank() {
   struct children_entry *child;
   while (list_length(children_list) > 0) {
     child = list_pop(children_list);
+    memb_free(&children_mem, child);
     
     // If child is direct linked
     if(linkaddr_cmp(&child->address_destination, &child->address_to_contact)) {
@@ -191,7 +192,7 @@ recv_rank_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
       // If parent change to have upper rank it means it's been reset (may be not receive 
       // the reset packet)
 
-      printf("[WARN - Sensor] Receive parent rank upper that knowed (old: %d, new: %d)\n", 
+      printf("[WARN - Sensor] Receive parent rank upper that knowed (old: %d, new: %d). Reset rank !\n", 
         parent_rank, getting_rank);
       resetRank();
 
@@ -355,6 +356,7 @@ timedout_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t r
   printf("[WARN - Sensor] runicast valve message timed out when sending to child %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
 
+  process_poll(&valve_data_process);
   // TODO remove children from the list (if contact/destination address are still the same)
 }
 
@@ -467,6 +469,7 @@ PROCESS_THREAD(rank_process, ev, data)
 
 
       struct rank_packet_entry *entry = list_pop(rank_list);
+      memb_free(&rank_mem, entry);
       linkaddr_t destination_addr = entry->destination;
       packetbuf_clear();
 
@@ -606,6 +609,7 @@ PROCESS_THREAD(valve_data_process, ev, data)
       }
 
       struct valve_packet_address_entry *entry = list_pop(valve_list);
+      memb_free(&valve_mem, entry);
       linkaddr_t destination_addr = entry->address;
       packetbuf_clear();
 

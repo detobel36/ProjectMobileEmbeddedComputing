@@ -2,7 +2,7 @@
 #define constants_c
 
 // Number of retransmission before to achieved that a communication is down
-#define MAX_RETRANSMISSIONS 4
+#define MAX_RETRANSMISSIONS 6
 // Number of data that are keep in queue
 #define NUM_DATA_IN_QUEUE 10
 

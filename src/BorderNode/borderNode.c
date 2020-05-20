@@ -91,6 +91,7 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
   packetbuf_clear();
 
   if(!runicast_is_transmitting(&runicast_rank)) {
+    printf("[DEBUG - Border] New rank, try wake up rank_process\n");
     process_poll(&rank_process);
   }
   packetbuf_clear();
@@ -118,7 +119,7 @@ sent_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retran
 static void
 timedout_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[INFO - Border] runicast rank message timed out when sending to %d.%d, retransmissions %d\n",
+  printf("[WARN - Border] runicast rank message timed out when sending to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
   process_poll(&rank_process);
 }
@@ -197,9 +198,10 @@ sent_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retra
 static void
 timedout_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[INFO - Border] runicast valve message timed out when sending to %d.%d, retransmissions %d\n",
+  printf("[WARN - Border] runicast valve message timed out when sending to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
 
+  process_poll(&send_valve_process);
   // TODO remove children from the list (if contact/destination address are still the same)
 }
 /*---------------------------------------------------------------------------*/
@@ -251,7 +253,7 @@ PROCESS_THREAD(send_valve_process, ev, data)
 
   while(1) {
     // TODO add delay to avoid send -> reply directly
-
+    printf("[DEBUG - Border] <%s> Wait event different that server\n", PROCESS_CURRENT()->name);
     PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
     printf("[DEBUG - Border] Wake up send_valve_process (valve: %d)\n", list_length(valve_list));
 
@@ -264,6 +266,7 @@ PROCESS_THREAD(send_valve_process, ev, data)
       }
 
       struct valve_packet_entry *entry = list_pop(valve_list);
+      memb_free(&valve_mem, entry);
       packetbuf_clear();
 
       struct children_entry *child = get_child_entry(entry->address_u8_0, entry->address_u8_1);
@@ -308,14 +311,15 @@ PROCESS_THREAD(rank_process, ev, data)
   memb_init(&rank_mem);
 
   while(1) {
-
+    printf("[DEBUG - Border] <%s> Wait event different of server server\n", PROCESS_CURRENT()->name);
     PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
-    printf("[DEBUG - Border] Wake up rank_process\n");
+    printf("[DEBUG - Border] <%s> Thread wake up, start timer\n", PROCESS_CURRENT()->name);
 
     // Add delay to reply
     etimer_set(&et, random_rand() % (CLOCK_SECOND * BROADCAST_REPLY_DELAY));
     // If event or timer
     PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
+    printf("[DEBUG - Border] <%s> Thread wake up, end of timer or event\n", PROCESS_CURRENT()->name);
 
     while(list_length(rank_list) > 0) {
       while (runicast_is_transmitting(&runicast_rank)) {
@@ -325,6 +329,7 @@ PROCESS_THREAD(rank_process, ev, data)
       }
 
       struct rank_packet_entry *entry = list_pop(rank_list);
+      memb_free(&rank_mem, entry);
       linkaddr_t destination_addr = entry->destination;
       packetbuf_clear();
 
@@ -354,7 +359,9 @@ PROCESS_THREAD(serialProcess, ev, data)
     PROCESS_BEGIN();
 
     while(1) {
+        printf("[DEBUG - Border] <%s> Wait event from server\n", PROCESS_CURRENT()->name);
         PROCESS_WAIT_EVENT_UNTIL(ev == serial_line_event_message);
+        printf("[DEBUG - Border] <%s> Thread wake up\n", PROCESS_CURRENT()->name);
 
         char* receivedData = (char *) data;
 
@@ -373,6 +380,7 @@ PROCESS_THREAD(serialProcess, ev, data)
         list_add(valve_list, valve_entry);
 
         if(!runicast_is_transmitting(&runicast_valve)) {
+          printf("[DEBUG - Border] New valve, wake up send_valve_process\n");
           process_poll(&send_valve_process);
         }
     }
