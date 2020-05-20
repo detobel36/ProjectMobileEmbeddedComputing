@@ -26,6 +26,8 @@
 // Max size of the network (border node need to have all children)
 #define NUM_MAX_CHILDREN 100
 
+#define CHILDREN_TIMEOUT 120
+
 // Communication channel
 #define BROADCAST_CHANNEL 129          // Broadcast to know parent
 #define RUNICAST_CHANNEL_BROADCAST 144 // Channel to reply to broadcast

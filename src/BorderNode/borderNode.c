@@ -76,6 +76,24 @@ static struct children_entry* get_child_entry(const uint8_t u8_0, const uint8_t 
   }
   return child;
 }
+
+static void remove_children(void *child_entry_ptr) {
+  struct children_entry *child_entry = child_entry_ptr;
+
+  list_remove(children_list, child_entry);
+  memb_free(&children_mem, child_entry);
+}
+
+static void remove_all_children_linked_to_address(const linkaddr_t *destination_addr) {
+  struct children_entry *child;
+  for(child = list_head(children_list); child != NULL; child = list_item_next(child)) {
+    if(linkaddr_cmp(&child->address_destination, destination_addr)) {
+      list_remove(children_list, child);
+      memb_free(&children_mem, child);
+    }
+  }
+}
+
 /*---------------------------------------------------------------------------*/
 
 
@@ -142,15 +160,19 @@ recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
     child_entry->address_to_contact = *from;
     child_entry->address_destination = source_addr;
     list_add(children_list, child_entry);
+    ctimer_set(&child_entry->ctimer, CHILDREN_TIMEOUT * CLOCK_SECOND, remove_children, child_entry);
     printf("[DEBUG - Border] Save new child %d.%d (using node %d.%d)\n", 
       source_addr.u8[0], source_addr.u8[1],
       from->u8[0], from->u8[1]);
 
-  } else if(linkaddr_cmp(&child->address_to_contact, from)) {
-    // TODO update to say that connexion is valid
-
   } else {
-    child->address_to_contact = *from;
+      // If saved contact address equals the from packet
+      // It means it is a direct connection.
+      // if(linkaddr_cmp(&child->address_to_contact, from)) {
+      // }
+
+      child->address_to_contact = *from;
+      ctimer_set(&child->ctimer, CHILDREN_TIMEOUT * CLOCK_SECOND, remove_children, child);
   }
 
   printf("[INFO - Border] Receive data %d (source %d.%d) from: %d.%d (seqno %d)\n", 
@@ -202,7 +224,8 @@ timedout_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t r
    to->u8[0], to->u8[1], retransmissions);
 
   process_poll(&send_valve_process);
-  // TODO remove children from the list (if contact/destination address are still the same)
+
+  remove_all_children_linked_to_address(to);
 }
 /*---------------------------------------------------------------------------*/
 
