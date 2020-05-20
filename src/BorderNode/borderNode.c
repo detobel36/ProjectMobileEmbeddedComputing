@@ -21,7 +21,7 @@
 /*---------------------------------------------------------------------------*/
 // VARIABLES
 static struct broadcast_conn broadcast;
-static struct runicast_conn runicast_broadcast;
+static struct runicast_conn runicast_rank;
 static struct runicast_conn runicast_data;
 static struct runicast_conn runicast_valve;
 static uint8_t rank = 0;
@@ -37,6 +37,9 @@ LIST(valve_list);
 
 MEMB(children_mem, struct children_entry, NUM_MAX_CHILDREN);
 LIST(children_list);
+
+MEMB(rank_mem, struct rank_packet_entry, NUM_MAX_CHILDREN);
+LIST(rank_list);
 /*---------------------------------------------------------------------------*/
 
 
@@ -44,7 +47,8 @@ LIST(children_list);
 // PROCESS
 PROCESS(send_valve_process, "Send valve process");
 PROCESS(serialProcess, "Serial communications with server");
-AUTOSTART_PROCESSES(&send_valve_process, &serialProcess);
+PROCESS(rank_process, "Rank process");
+AUTOSTART_PROCESSES(&send_valve_process, &serialProcess, &rank_process);
 /*---------------------------------------------------------------------------*/
 
 
@@ -80,23 +84,15 @@ static struct children_entry* get_child_entry(const uint8_t u8_0, const uint8_t 
 static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
-  // Request to find parent
-
-  // Check that transmission already exist
-  if(runicast_is_transmitting(&runicast_broadcast)) {
-    printf("[WARN - Border] Could not reply to %d.%d, runicast_broadcast is already used\n", 
-      from->u8[0], 
-        from->u8[1]);
-    return;
-  }
+  struct rank_packet_entry *packet_response = memb_alloc(&rank_mem);
+  packet_response->destination = *from;
+  printf("[INFO - Border] Create response rank for %d.%d\n", from->u8[0], from->u8[1]);
+  list_add(rank_list, packet_response);
   packetbuf_clear();
 
-  struct rank_packet packet_response;
-  packet_response.rank = rank;
-
-  packetbuf_copyfrom(&packet_response, sizeof(struct rank_packet));
-  printf("[INFO - Border] Send response to broadcast\n");
-  runicast_send(&runicast_broadcast, from, MAX_RETRANSMISSIONS);
+  if(!runicast_is_transmitting(&runicast_rank)) {
+    process_poll(&rank_process);
+  }
   packetbuf_clear();
 }
 
@@ -106,23 +102,25 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 /*---------------------------------------------------------------------------*/
 // Receive broadcast response
 static void
-recv_broadcast_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
+recv_rank_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
 {
-  printf("[SEVERE - Border] Not normal to be here\n");
+  printf("[SEVERE - Border] Not normal to be here (recv_rank_runicast)\n");
 }
 
 static void
-sent_broadcast_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
+sent_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[INFO - Border] runicast broadcast message sent to %d.%d, retransmissions %d\n",
+  printf("[INFO - Border] runicast rank message sent to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
+  process_poll(&rank_process);
 }
 
 static void
-timedout_broadcast_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
+timedout_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[INFO - Border] runicast broadcast message timed out when sending to %d.%d, retransmissions %d\n",
+  printf("[INFO - Border] runicast rank message timed out when sending to %d.%d, retransmissions %d\n",
    to->u8[0], to->u8[1], retransmissions);
+  process_poll(&rank_process);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -213,10 +211,11 @@ static const struct runicast_callbacks runicast_data_callbacks = {
                    timedout_data_runicast};
 
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
-static const struct runicast_callbacks runicast_broadcast_callbacks = {
-                   recv_broadcast_runicast,
-                   sent_broadcast_runicast,
-                   timedout_broadcast_runicast};
+
+static const struct runicast_callbacks runicast_rank_callbacks = {
+                   recv_rank_runicast,
+                   sent_rank_runicast,
+                   timedout_rank_runicast};
 
 static const struct runicast_callbacks runicast_valve_callbacks = {
                    recv_valve_runicast,
@@ -228,11 +227,10 @@ static const struct runicast_callbacks runicast_valve_callbacks = {
 
 
 /*---------------------------------------------------------------------------*/
-// SEND DATA PROCESS
+// SEND VALVE PROCESS
 PROCESS_THREAD(send_valve_process, ev, data)
 {
   PROCESS_EXITHANDLER(broadcast_close(&broadcast);)
-  PROCESS_EXITHANDLER(runicast_close(&runicast_broadcast);)
 
   PROCESS_EXITHANDLER(runicast_close(&runicast_valve);)
   PROCESS_EXITHANDLER(runicast_close(&runicast_data);)
@@ -242,7 +240,6 @@ PROCESS_THREAD(send_valve_process, ev, data)
 
 
   broadcast_open(&broadcast, BROADCAST_CHANNEL, &broadcast_call);
-  runicast_open(&runicast_broadcast, RUNICAST_CHANNEL_BROADCAST, &runicast_broadcast_callbacks);
 
   runicast_open(&runicast_data, RUNICAST_CHANNEL_DATA, &runicast_data_callbacks);
 
@@ -253,14 +250,16 @@ PROCESS_THREAD(send_valve_process, ev, data)
   memb_init(&valve_mem);
 
   while(1) {
+    // TODO add delay to avoid send -> reply directly
 
-    PROCESS_WAIT_EVENT();
-    printf("[DEBUG - Border] Wake up send_valve_process\n");
+    PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
+    printf("[DEBUG - Border] Wake up send_valve_process (valve: %d)\n", list_length(valve_list));
 
     while(list_length(valve_list) > 0) {
+
       while (runicast_is_transmitting(&runicast_valve)) {
         printf("[DEBUG - Border] Wait runicast_valve: %s\n", PROCESS_CURRENT()->name);
-        PROCESS_WAIT_EVENT();
+        PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
         printf("[DEBUG - Border] Wake up send_valve_process end of transmitting\n");
       }
 
@@ -295,33 +294,86 @@ PROCESS_THREAD(send_valve_process, ev, data)
 
 
 /*---------------------------------------------------------------------------*/
+// SEND RANK RESPONSE
+PROCESS_THREAD(rank_process, ev, data)
+{
+  PROCESS_EXITHANDLER(runicast_close(&runicast_rank);)
+
+  PROCESS_BEGIN();
+
+  static struct etimer et;
+  runicast_open(&runicast_rank, RUNICAST_CHANNEL_BROADCAST, &runicast_rank_callbacks);
+
+  list_init(rank_list);
+  memb_init(&rank_mem);
+
+  while(1) {
+
+    PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
+    printf("[DEBUG - Border] Wake up rank_process\n");
+
+    // Add delay to reply
+    etimer_set(&et, random_rand() % (CLOCK_SECOND * BROADCAST_REPLY_DELAY));
+    // If event or timer
+    PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
+
+    while(list_length(rank_list) > 0) {
+      while (runicast_is_transmitting(&runicast_rank)) {
+        printf("[DEBUG - Border] Wait runicast_rank: %s\n", PROCESS_CURRENT()->name);
+        PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
+        printf("[DEBUG - Border] Wake up rank_process end of transmitting\n");
+      }
+
+      struct rank_packet_entry *entry = list_pop(rank_list);
+      linkaddr_t destination_addr = entry->destination;
+      packetbuf_clear();
+
+      printf("[INFO - Border] Send rank information to %d.%d (%d rank in queue)\n", 
+        destination_addr.u8[0], destination_addr.u8[1], list_length(rank_list));
+
+      struct rank_packet packet;
+      packet.rank = rank;
+      packetbuf_copyfrom(&packet, sizeof(struct rank_packet));
+
+      runicast_send(&runicast_rank, &destination_addr, MAX_RETRANSMISSIONS);
+      packetbuf_clear();
+
+    }
+
+  }
+
+  PROCESS_END();
+}
+/*---------------------------------------------------------------------------*/
+
+
+/*---------------------------------------------------------------------------*/
 // RECEIVE DATA FROM SERVER
 PROCESS_THREAD(serialProcess, ev, data)
 {
     PROCESS_BEGIN();
 
     while(1) {
-        PROCESS_YIELD();
-        if(ev == serial_line_event_message) {
-          char* receivedData = (char *) data;
+        PROCESS_WAIT_EVENT_UNTIL(ev == serial_line_event_message);
 
-          char* u8_split;
+        char* receivedData = (char *) data;
 
-          u8_split = strtok(receivedData, ".");
-          uint8_t u8_0 = char_to_int(u8_split);
-          u8_split = strtok(NULL, ".");
-          uint8_t u8_1 = char_to_int(u8_split);
+        char* u8_split;
 
-          printf("[INFO - Border] Open valve of node: %d.%d\n", u8_0, u8_1);
+        u8_split = strtok(receivedData, ".");
+        uint8_t u8_0 = char_to_int(u8_split);
+        u8_split = strtok(NULL, ".");
+        uint8_t u8_1 = char_to_int(u8_split);
 
-          struct valve_packet_entry *valve_entry = memb_alloc(&valve_mem);
-          valve_entry->address_u8_0 = u8_0;
-          valve_entry->address_u8_1 = u8_1;
-          list_add(valve_list, valve_entry);
+        printf("[INFO - Border] Open valve of node: %d.%d\n", u8_0, u8_1);
 
-          if(!runicast_is_transmitting(&runicast_valve)) {
-            process_poll(&send_valve_process);
-          }
+        struct valve_packet_entry *valve_entry = memb_alloc(&valve_mem);
+        valve_entry->address_u8_0 = u8_0;
+        valve_entry->address_u8_1 = u8_1;
+        list_add(valve_list, valve_entry);
+
+        if(!runicast_is_transmitting(&runicast_valve)) {
+          process_poll(&send_valve_process);
         }
     }
 
