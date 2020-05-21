@@ -352,7 +352,7 @@ recv_valve_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seq
   struct valve_packet *forward_valve_packet = packetbuf_dataptr();
 
   if(!linkaddr_cmp(from, &parent_addr)) {
-    prinf("[WARN - Sensor] Receive valve information from %d.%d but parent address is %d.%d\n",
+    printf("[WARN - Sensor] Receive valve information from %d.%d but parent address is %d.%d\n",
       from->u8[0], from->u8[1], parent_addr.u8[0], parent_addr.u8[1]);
   }
 
