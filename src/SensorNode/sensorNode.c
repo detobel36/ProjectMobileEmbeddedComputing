@@ -122,6 +122,8 @@ static void registerParent(const linkaddr_t from, const uint8_t getting_rank,
 
 static void remove_children(void *child_entry_ptr) {
   struct children_entry *child_entry = child_entry_ptr;
+  printf("Remove children %d.%d: no recent message\n", child_entry->address_destination.u8[0], 
+    child_entry->address_destination.u8[1]);
 
   list_remove(children_list, child_entry);
   memb_free(&children_mem, child_entry);
