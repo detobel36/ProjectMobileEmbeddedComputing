@@ -2,7 +2,7 @@
 #define constants_c
 
 // Number of retransmission before to achieved that a communication is down
-#define MAX_RETRANSMISSIONS 4
+#define MAX_RETRANSMISSIONS 6
 // Number of data that are keep in queue
 #define NUM_DATA_IN_QUEUE 10
 
@@ -10,6 +10,8 @@
 // (this value is used like: minimum = BROADCAST_DELAY and maximum = 2*BROADCAST_DELAY when 
 // rank is not define and otherwise minimum = 4*BROADCAST_DELAY and maximum = 8*BROADCAST_DELAY)
 #define BROADCAST_DELAY 15
+// Add delay to reply to broadcast (to avoid collision), between 0 and BROADCAST_REPLY_DELAY
+#define BROADCAST_REPLY_DELAY 10
 
 // Delay to try to send data (no message if no data)
 #define DATA_MIN_DELAY 10
@@ -23,6 +25,8 @@
 #define MAX_RANK 255
 // Max size of the network (border node need to have all children)
 #define NUM_MAX_CHILDREN 100
+
+#define CHILDREN_TIMEOUT 120
 
 // Communication channel
 #define BROADCAST_CHANNEL 129          // Broadcast to know parent

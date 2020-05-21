@@ -12,3 +12,12 @@ Project for the cours Mobile and Embedded Computing
         > SensorNode
     > README.md
 ```
+
+
+
+## Help information for developper
+
+Retreive process name
+```
+PROCESS_CURRENT()->name
+```
