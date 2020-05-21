@@ -54,6 +54,7 @@ struct children_entry
     struct children_entry *next;
     linkaddr_t address_destination;
     linkaddr_t address_to_contact;
+    uint8_t last_seqno;
     struct ctimer ctimer;
 };
 

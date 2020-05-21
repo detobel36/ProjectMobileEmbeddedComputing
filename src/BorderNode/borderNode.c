@@ -176,10 +176,14 @@ recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
       ctimer_set(&child->ctimer, CHILDREN_TIMEOUT * CLOCK_SECOND, remove_children, child);
   }
 
-  printf("[INFO - Border] Receive data %d (source %d.%d) from: %d.%d (seqno %d)\n", 
-    data_packet->data, source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1], seqno);
-  // Send information to server (only message with prefix "[DATA]")
-  printf("[DATA] %d.%d - %d\n", source_addr.u8[0], source_addr.u8[1], data_packet->data);
+  if(child->last_seqno == seqno) {
+      printf("[INFO - Border] Detect duplicate data from %d.%d\n", from->u8[0], from->u8[1]);
+  } else {
+    printf("[INFO - Border] Receive data %d (source %d.%d) from: %d.%d (seqno %d)\n", 
+      data_packet->data, source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1], seqno);
+    // Send information to server (only message with prefix "[DATA]")
+    printf("[DATA] %d.%d - %d\n", source_addr.u8[0], source_addr.u8[1], data_packet->data);
+  }
 
   packetbuf_clear();
 }
