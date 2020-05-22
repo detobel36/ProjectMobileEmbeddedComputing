@@ -60,11 +60,5 @@ struct children_entry
     struct ctimer ctimer;
 };
 
-// History
-struct history_entry {
-    struct history_entry *next;
-    linkaddr_t addr;
-    uint8_t seq;
-};
 
 #endif
