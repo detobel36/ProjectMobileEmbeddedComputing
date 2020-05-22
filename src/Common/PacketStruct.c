@@ -10,6 +10,7 @@ struct rank_packet
 
 struct data_packet
 {
+    uint8_t custom_seqno;
     uint8_t data;
     linkaddr_t address;
 };
@@ -17,6 +18,7 @@ struct data_packet
 // Valve packet always tell that the valve need to be open
 struct valve_packet
 {
+    uint8_t custom_seqno;
     linkaddr_t address;
 };
 
@@ -54,9 +56,15 @@ struct children_entry
     struct children_entry *next;
     linkaddr_t address_destination;
     linkaddr_t address_to_contact;
-    uint8_t last_seqno;
+    uint8_t last_custom_seqno;
     struct ctimer ctimer;
 };
 
+// History
+struct history_entry {
+    struct history_entry *next;
+    linkaddr_t addr;
+    uint8_t seq;
+};
 
 #endif
