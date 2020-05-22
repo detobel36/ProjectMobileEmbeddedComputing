@@ -2,9 +2,12 @@
 #define constants_c
 
 // Number of retransmission before to achieved that a communication is down
-#define MAX_RETRANSMISSIONS 6
+#define MAX_RETRANSMISSIONS 4
 // Number of data that are keep in queue
 #define NUM_DATA_IN_QUEUE 10
+
+// Number of history data
+#define NUM_MAX_SEQNO 8
 
 // Delay to broadcast 
 // (this value is used like: minimum = BROADCAST_DELAY and maximum = 2*BROADCAST_DELAY when 
@@ -14,11 +17,11 @@
 #define BROADCAST_REPLY_DELAY 10
 
 // Delay to try to send data (no message if no data)
-#define DATA_MIN_DELAY 10
+// #define DATA_MIN_DELAY 10  // Not used
 #define DATA_MAX_DELAY 30
 // Delay to try to send valve (no message if no valve data)
-#define VALVE_MIN_DELAY 5
-#define VALVE_MAX_DELAY 15
+// #define VALVE_MIN_DELAY 5 // Not used
+// #define VALVE_MAX_DELAY 15 // Not used
 // Delay to measure air quality
 #define DATA_COLLECTING_DELAY 60
 // Default rank on start (equals to max rank)
