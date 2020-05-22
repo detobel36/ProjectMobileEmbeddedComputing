@@ -12,20 +12,16 @@
 #include "random.h"
 #include <stdbool.h>
 
+#define NODE_TYPE "Border"
 
-#include "../Common/PacketStruct.c"
 #include "../Common/Constants.c"
-
+#include "../Common/PacketStruct.c"
 
 
 /*---------------------------------------------------------------------------*/
 // VARIABLES
 static struct broadcast_conn broadcast;
-static struct runicast_conn runicast_rank;
-static struct runicast_conn runicast_data;
-static struct runicast_conn runicast_valve;
 static uint8_t rank = 0;
-static uint8_t current_valve_seqno;
 /*---------------------------------------------------------------------------*/
 
 
@@ -34,16 +30,16 @@ static uint8_t current_valve_seqno;
 
 // Doc about list: http://contiki.sourceforge.net/docs/2.6/a01682.html
 // Save all children
-MEMB(children_mem, struct children_entry, NUM_MAX_CHILDREN);
-LIST(children_list);
+// MEMB(children_mem, struct children_entry, NUM_MAX_CHILDREN);
+// LIST(children_list);
 
 // Save valve packet
 MEMB(valve_mem, struct valve_packet_entry, NUM_DATA_IN_QUEUE);
 LIST(valve_list);
 
-// Save rank packet
-MEMB(rank_mem, struct rank_packet_entry, NUM_MAX_CHILDREN);
-LIST(rank_list);
+// // Save rank packet
+// MEMB(rank_mem, struct rank_packet_entry, NUM_MAX_CHILDREN);
+// LIST(rank_list);
 /*---------------------------------------------------------------------------*/
 
 
@@ -55,9 +51,16 @@ PROCESS(rank_process, "Rank process");
 AUTOSTART_PROCESSES(&send_valve_process, &serialProcess, &rank_process);
 /*---------------------------------------------------------------------------*/
 
+#include "../Common/UtilsChildren.c"
+
+#include "../Common/runicastData.c"
+#include "../Common/runicastRank.c"
+#include "../Common/runicastValve.c"
+
 
 /*---------------------------------------------------------------------------*/
 // UTILS
+
 static uint8_t char_to_int(char* char_text)
 {
   uint8_t result = 0;
@@ -70,35 +73,6 @@ static uint8_t char_to_int(char* char_text)
   return result;
 }
 
-// TODO redondant with sensorNode
-static struct children_entry* get_child_entry(const uint8_t u8_0, const uint8_t u8_1) {
-  struct children_entry *child;
-  for(child = list_head(children_list); child != NULL; child = list_item_next(child)) {
-    if(child->address_destination.u8[0] == u8_0 && child->address_destination.u8[1] == u8_1) {
-      break;
-    }
-  }
-  return child;
-}
-
-static void remove_children(void *child_entry_ptr) {
-  struct children_entry *child_entry = child_entry_ptr;
-  printf("[INFO - Border] Remove children %d.%d: no recent message\n", child_entry->address_destination.u8[0], 
-    child_entry->address_destination.u8[1]);
-
-  list_remove(children_list, child_entry);
-  memb_free(&children_mem, child_entry);
-}
-
-static void remove_all_children_linked_to_address(const linkaddr_t *destination_addr) {
-  struct children_entry *child;
-  for(child = list_head(children_list); child != NULL; child = list_item_next(child)) {
-    if(linkaddr_cmp(&child->address_destination, destination_addr)) {
-      list_remove(children_list, child);
-      memb_free(&children_mem, child);
-    }
-  }
-}
 /*---------------------------------------------------------------------------*/
 
 
@@ -107,15 +81,7 @@ static void remove_all_children_linked_to_address(const linkaddr_t *destination_
 static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
-  struct rank_packet_entry *packet_response = memb_alloc(&rank_mem);
-  packet_response->destination = *from;
-  printf("[INFO - Border] Create response rank for %d.%d\n", from->u8[0], from->u8[1]);
-  list_add(rank_list, packet_response);
-  packetbuf_clear();
-
-  if(!runicast_is_transmitting(&runicast_rank)) {
-    process_poll(&rank_process);
-  }
+  create_rank_response_packet(from);
   packetbuf_clear();
 }
 
@@ -125,75 +91,46 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 /*---------------------------------------------------------------------------*/
 // Receive broadcast response
 static void
-recv_rank_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
+recv_rank_runicast(const linkaddr_t *from, const struct rank_packet *rank_packet)
 {
   printf("[SEVERE - Border] Not normal to be here (recv_rank_runicast)\n");
 }
 
-static void
-sent_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
-{
-  printf("[INFO - Border] runicast rank message sent to %d.%d, retransmissions %d\n",
-   to->u8[0], to->u8[1], retransmissions);
-  process_poll(&rank_process);
-}
+// static void
+// sent_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
+// {
+//   printf("[INFO - Border] runicast rank message sent to %d.%d, retransmissions %d\n",
+//    to->u8[0], to->u8[1], retransmissions);
+//   process_poll(&rank_process);
+// }
 
-static void
-timedout_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
-{
-  printf("[WARN - Border] runicast rank message timed out when sending to %d.%d, retransmissions %d\n",
-   to->u8[0], to->u8[1], retransmissions);
-  process_poll(&rank_process);
-}
-
-/*---------------------------------------------------------------------------*/
-
+// static void
+// timedout_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
+// {
+//   printf("[WARN - Border] runicast rank message timed out when sending to %d.%d, retransmissions %d\n",
+//    to->u8[0], to->u8[1], retransmissions);
+//   process_poll(&rank_process);
+// }
 
 /*---------------------------------------------------------------------------*/
-// Receive data
+
+
+/*---------------------------------------------------------------------------*/
+// Receive data packet
 static void
-recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
+recv_data_runicast(const linkaddr_t *from, const struct data_packet *data_packet)
 {
-  struct data_packet *data_packet = packetbuf_dataptr();
-  linkaddr_t source_addr = data_packet->address;
   uint8_t custom_seqno = data_packet->custom_seqno;
+  linkaddr_t source_addr = data_packet->address;
 
+  // Save children
   struct children_entry *child = get_child_entry(source_addr.u8[0], source_addr.u8[1]);
-  if(child == NULL) {
-    struct children_entry *child_entry = memb_alloc(&children_mem);
-    child_entry->address_to_contact = *from;
-    child_entry->address_destination = source_addr;
-    child_entry->last_custom_seqno = custom_seqno;
-    list_add(children_list, child_entry);
-    ctimer_set(&child_entry->ctimer, CHILDREN_TIMEOUT * CLOCK_SECOND, remove_children, child_entry);
-    printf("[DEBUG - Border] Save new child %d.%d (using node %d.%d)\n", 
-      source_addr.u8[0], source_addr.u8[1],
-      from->u8[0], from->u8[1]);
-
-  } else {
-
-      if(child->last_custom_seqno == custom_seqno) {
-        printf("[WARN - Sensor] Detect duplicate data from %d.%d source %d.%d (data: %d)\n", 
-          child->address_to_contact.u8[0], child->address_to_contact.u8[1], 
-          child->address_destination.u8[0], child->address_destination.u8[1],
-          data_packet->data);
-
-        packetbuf_clear();
-        return;
-      }
-
-      // If saved contact address equals the from packet
-      // It means it is a direct connection.
-      // if(linkaddr_cmp(&child->address_to_contacct, from)) {
-      // }
-
-      child->last_custom_seqno = custom_seqno;
-      child->address_to_contact = *from;
-      ctimer_set(&child->ctimer, CHILDREN_TIMEOUT * CLOCK_SECOND, remove_children, child);
+  if(create_child_or_udpate_and_detect_duplicate(child, from, custom_seqno, source_addr, data_packet->data)) {
+    return;
   }
 
-  printf("[INFO - Border] Receive data %d (source %d.%d) from: %d.%d (seqno %d)\n", 
-    data_packet->data, source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1], seqno);
+  printf("[INFO - Border] Receive data %d (source %d.%d) from: %d.%d\n", 
+    data_packet->data, source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1]);
   // Send information to server (only message with prefix "[DATA]")
   printf("[DATA] %d.%d - %d\n", source_addr.u8[0], source_addr.u8[1], data_packet->data);
 
@@ -219,51 +156,47 @@ timedout_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t re
 /*---------------------------------------------------------------------------*/
 // Send Valve
 static void
-recv_valve_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
+recv_valve_runicast(const linkaddr_t *from, const struct valve_packet *forward_valve_packet)
 {
   printf("[SEVERE - Border] Not normal to receive valve packet (from %d.%d)\n", 
     from->u8[0], from->u8[1]);
 }
 
-static void
-sent_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
-{
-  printf("[INFO - Border] runicast valve message sent to %d.%d, retransmissions %d\n",
-   to->u8[0], to->u8[1], retransmissions);
+// static void
+// sent_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
+// {
+//   printf("[INFO - Border] runicast valve message sent to %d.%d, retransmissions %d\n",
+//    to->u8[0], to->u8[1], retransmissions);
 
-  process_poll(&send_valve_process);
-}
+//   process_poll(&send_valve_process);
+// }
 
-static void
-timedout_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
-{
-  printf("[WARN - Border] runicast valve message timed out when sending to %d.%d, retransmissions %d\n",
-   to->u8[0], to->u8[1], retransmissions);
+// static void
+// timedout_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
+// {
+//   printf("[WARN - Border] runicast valve message timed out when sending to %d.%d, retransmissions %d\n",
+//    to->u8[0], to->u8[1], retransmissions);
 
-  process_poll(&send_valve_process);
+//   process_poll(&send_valve_process);
 
-  remove_all_children_linked_to_address(to);
-}
+//   remove_all_children_linked_to_address(to);
+// }
 /*---------------------------------------------------------------------------*/
 
 
 /*---------------------------------------------------------------------------*/
-static const struct runicast_callbacks runicast_data_callbacks = {
-                   recv_data_runicast,
-                   sent_data_runicast,
-                   timedout_data_runicast};
 
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
 
-static const struct runicast_callbacks runicast_rank_callbacks = {
-                   recv_rank_runicast,
-                   sent_rank_runicast,
-                   timedout_rank_runicast};
+// static const struct runicast_callbacks runicast_rank_callbacks = {
+//                    recv_rank_runicast,
+//                    sent_rank_runicast,
+//                    timedout_rank_runicast};
 
-static const struct runicast_callbacks runicast_valve_callbacks = {
-                   recv_valve_runicast,
-                   sent_valve_runicast,
-                   timedout_valve_runicast};
+// static const struct runicast_callbacks runicast_valve_callbacks = {
+//                    recv_valve_runicast,
+//                    sent_valve_runicast,
+//                    timedout_valve_runicast};
 /*---------------------------------------------------------------------------*/
 
 
@@ -283,18 +216,11 @@ PROCESS_THREAD(send_valve_process, ev, data)
 
   PROCESS_BEGIN();
 
-
   broadcast_open(&broadcast, BROADCAST_CHANNEL, &broadcast_call);
 
-  runicast_open(&runicast_data, RUNICAST_CHANNEL_DATA, &runicast_data_callbacks);
+  open_runicast_data();
+  open_runicast_valve();
 
-  runicast_open(&runicast_valve, RUNICAST_CHANNEL_VALVE, &runicast_valve_callbacks);
-
-
-  list_init(valve_list);
-  memb_init(&valve_mem);
-
-  current_valve_seqno = 0;
 
   while(1) {
     // TODO add delay to avoid send -> reply directly
@@ -347,10 +273,11 @@ PROCESS_THREAD(rank_process, ev, data)
   PROCESS_BEGIN();
 
   static struct etimer et;
-  runicast_open(&runicast_rank, RUNICAST_CHANNEL_BROADCAST, &runicast_rank_callbacks);
+  // runicast_open(&runicast_rank, RUNICAST_CHANNEL_BROADCAST, &runicast_rank_callbacks);
 
-  list_init(rank_list);
-  memb_init(&rank_mem);
+  // list_init(rank_list);
+  // memb_init(&rank_mem);
+  open_runicast_rank();
 
   while(1) {
     PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);

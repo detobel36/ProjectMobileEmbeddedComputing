@@ -11,10 +11,10 @@
 #include "random.h"
 #include <stdbool.h>
 
+#define NODE_TYPE "Sensor"
 
-#include "../Common/PacketStruct.c"
 #include "../Common/Constants.c"
-
+#include "../Common/PacketStruct.c"
 
 
 /*---------------------------------------------------------------------------*/
@@ -22,9 +22,6 @@
 
 // Communication system
 static struct broadcast_conn broadcast;
-static struct runicast_conn runicast_data;
-static struct runicast_conn runicast_rank;
-static struct runicast_conn runicast_valve;
 static uint8_t rank = MAX_RANK;
 
 // Parent information
@@ -34,7 +31,6 @@ static uint16_t parent_last_rssi;
 
 // Avoid duplicate
 static uint8_t parent_last_valve_seqno;
-static uint8_t current_valve_seqno;
 static uint8_t current_data_seqno;
 
 // Event
@@ -53,11 +49,11 @@ LIST(data_list);
 MEMB(valve_mem, struct valve_packet_address_entry, NUM_DATA_IN_QUEUE);
 LIST(valve_list);
 
-MEMB(rank_mem, struct rank_packet_entry, NUM_MAX_CHILDREN);
-LIST(rank_list);
+// MEMB(rank_mem, struct rank_packet_entry, NUM_MAX_CHILDREN);
+// LIST(rank_list);
 
-MEMB(children_mem, struct children_entry, NUM_MAX_CHILDREN);
-LIST(children_list);
+// MEMB(children_mem, struct children_entry, NUM_MAX_CHILDREN);
+// LIST(children_list);
 /*---------------------------------------------------------------------------*/
 
 
@@ -66,25 +62,21 @@ LIST(children_list);
 PROCESS(broadcast_process, "Broadcast process");
 PROCESS(rank_process, "Rank process");
 PROCESS(collect_data_process, "Collect Data process");
-PROCESS(valve_data_process, "Valve Data process");
+PROCESS(send_valve_process, "Send Valve Data process");
 PROCESS(send_data_process, "Send Data process");
 AUTOSTART_PROCESSES(&broadcast_process, &rank_process, &collect_data_process, &send_data_process, 
-  &valve_data_process);
+  &send_valve_process);
 /*---------------------------------------------------------------------------*/
+
+#include "../Common/UtilsChildren.c"
+
+#include "../Common/runicastData.c"
+#include "../Common/runicastRank.c"
+#include "../Common/runicastValve.c"
 
 
 /*---------------------------------------------------------------------------*/
 // UTILS
-static struct children_entry* get_child_entry(const linkaddr_t *destination_addr) {
-  struct children_entry *child;
-  for(child = list_head(children_list); child != NULL; child = list_item_next(child)) {
-    if(linkaddr_cmp(&child->address_destination, destination_addr)) {
-      break;
-    }
-  }
-  return child;
-}
-
 static void add_reset_packet_to_queue(const linkaddr_t destination) {
   struct rank_packet_entry *rank_packet = memb_alloc(&rank_mem);
   rank_packet->destination = destination;
@@ -131,26 +123,9 @@ static void registerParent(const linkaddr_t from, const uint8_t getting_rank,
   parent_last_rssi = current_rssi;
 }
 
-static void remove_children(void *child_entry_ptr) {
-  struct children_entry *child_entry = child_entry_ptr;
-  printf("[INFO - Sensor] Remove children %d.%d: no recent message\n", child_entry->address_destination.u8[0], 
-    child_entry->address_destination.u8[1]);
-
-  list_remove(children_list, child_entry);
-  memb_free(&children_mem, child_entry);
-}
-
-static void remove_all_children_linked_to_address(const linkaddr_t *destination_addr) {
-  struct children_entry *child;
-  for(child = list_head(children_list); child != NULL; child = list_item_next(child)) {
-    if(linkaddr_cmp(&child->address_destination, destination_addr)) {
-      list_remove(children_list, child);
-      memb_free(&children_mem, child);
-    }
-  }
-}
-
 /*---------------------------------------------------------------------------*/
+
+
 
 
 
@@ -170,15 +145,8 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
       printf("[DEBUG - Sensor] Parent send reset packet\n");
       resetRank();
     } else if(received_rank > rank) {
-      struct rank_packet_entry *packet_response = memb_alloc(&rank_mem);
-      packet_response->destination = *from;
-      printf("[INFO - Sensor] Create response rank for %d.%d\n", from->u8[0], from->u8[1]);
-      list_add(rank_list, packet_response);
-      packetbuf_clear();
-
-      if(!runicast_is_transmitting(&runicast_rank)) {
-        process_poll(&rank_process);
-      }
+      create_rank_response_packet(from);
+      
     } else {
       printf("[DEBUG - Sensor] Do not send broadcast response if rank is lower than current\n");
     }
@@ -192,12 +160,11 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 /*---------------------------------------------------------------------------*/
 // Receive rank packet
 static void
-recv_rank_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
+recv_rank_runicast(const linkaddr_t *from, const struct rank_packet *rank_packet)
 {
-  struct rank_packet *rank_packet = packetbuf_dataptr();
   uint16_t getting_rank = rank_packet->rank;
-  printf("[DEBUG - Sensor] Discovery response from %d.%d, seqno %d, rank: %d\n", from->u8[0], 
-    from->u8[1], seqno, getting_rank);
+  printf("[DEBUG - Sensor] Discovery response from %d.%d, rank: %d\n", from->u8[0], 
+    from->u8[1], getting_rank);
 
   uint16_t current_rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
 
@@ -236,8 +203,8 @@ recv_rank_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
   } else if(rank > getting_rank) {  // current_rank > new_getting_rank
     if(current_rssi > parent_last_rssi) {
       registerParent(*from, getting_rank, current_rssi);
-      printf("[INFO - Sensor] Change parent and get rank: %d (quality signal: %d)\n", 
-        rank, parent_last_rssi);
+      printf("[INFO - Sensor] Change parent (new: %d.%d) and get rank: %d (quality signal: %d)\n", 
+        from->u8[0], from->u8[1], rank, parent_last_rssi);
     } else {
       printf("[INFO - Sensor] Quality signal not enought to change parent (new: %d, parent: %d)\n", 
         current_rssi, parent_last_rssi);
@@ -247,23 +214,23 @@ recv_rank_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
   packetbuf_clear();
 }
 
-static void
-sent_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
-{
-  printf("[INFO - Sensor] runicast rank message sent to %d.%d, retransmissions %d\n",
-   to->u8[0], to->u8[1], retransmissions);
+// static void
+// sent_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
+// {
+//   printf("[INFO - Sensor] runicast rank message sent to %d.%d, retransmissions %d\n",
+//    to->u8[0], to->u8[1], retransmissions);
 
-  process_poll(&rank_process);
-}
+//   process_poll(&rank_process);
+// }
 
-static void
-timedout_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
-{
-  printf("[WARN - Sensor] runicast rank message timed out when sending to %d.%d, retransmissions %d\n",
-   to->u8[0], to->u8[1], retransmissions);
+// static void
+// timedout_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
+// {
+//   printf("[WARN - Sensor] runicast rank message timed out when sending to %d.%d, retransmissions %d\n",
+//    to->u8[0], to->u8[1], retransmissions);
 
-  process_poll(&rank_process);
-}
+//   process_poll(&rank_process);
+// }
 
 /*---------------------------------------------------------------------------*/
 
@@ -271,7 +238,7 @@ timedout_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t re
 /*---------------------------------------------------------------------------*/
 // Receive data packet
 static void
-recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
+recv_data_runicast(const linkaddr_t *from, const struct data_packet *data_packet)
 {
 
   // If we receive data and we don't have any rank
@@ -283,49 +250,20 @@ recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
       process_poll(&rank_process);
     }
   } else {
-
-    struct data_packet *forward_data_packet = packetbuf_dataptr();
-    uint8_t custom_seqno = forward_data_packet->custom_seqno;
-
-    linkaddr_t source_addr = forward_data_packet->address;
+    uint8_t custom_seqno = data_packet->custom_seqno;
+    linkaddr_t source_addr = data_packet->address;
 
     // Save children
-    struct children_entry *child = get_child_entry(&source_addr);
-    if(child == NULL) {
-      struct children_entry *child_entry = memb_alloc(&children_mem);
-      child_entry->address_to_contact = *from;
-      child_entry->address_destination = source_addr;
-      child_entry->last_custom_seqno = custom_seqno;
-      list_add(children_list, child_entry);
-      ctimer_set(&child_entry->ctimer, CHILDREN_TIMEOUT * CLOCK_SECOND, remove_children, child_entry);
-      printf("[DEBUG - Sensor] Save new child %d.%d (using node %d.%d)\n", source_addr.u8[0], 
-        source_addr.u8[1], from->u8[0], from->u8[1]);
-
-    } else {
-
-      if(child->last_custom_seqno == custom_seqno) {
-        printf("[WARN - Sensor] Detect duplicate data from %d.%d\n", 
-          child->address_destination.u8[0], child->address_destination.u8[1]);
-
-        packetbuf_clear();
-        return;
-      }
-
-      // If saved contact address equals the from packet
-      // It means it is a direct connection.
-      // if(linkaddr_cmp(&child->address_to_contact, from)) {
-      // }
-
-      child->address_to_contact = *from;
-      child->last_custom_seqno = custom_seqno;
-      ctimer_set(&child->ctimer, CHILDREN_TIMEOUT * CLOCK_SECOND, remove_children, child);
+    struct children_entry *child = get_child_entry_address(&source_addr);
+    if(create_child_or_udpate_and_detect_duplicate(child, from, custom_seqno, source_addr, data_packet->data)) {
+      return;
     }
 
-    printf("[INFO - Sensor] Get data to forward %d (source: %d.%d) from %d.%d to %d.%d, seqno %d, custom_seqno %d\n", 
-      forward_data_packet->data, source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1], 
-      parent_addr.u8[0], parent_addr.u8[1], seqno, custom_seqno);
+    printf("[INFO - Sensor] Get data to forward %d (source: %d.%d) from %d.%d to %d.%d, custom_seqno %d\n", 
+      data_packet->data, source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1], 
+      parent_addr.u8[0], parent_addr.u8[1], custom_seqno);
     struct data_packet_entry *data_entry = memb_alloc(&data_mem);
-    data_entry->data = forward_data_packet->data;
+    data_entry->data = data_packet->data;
     data_entry->address = source_addr;
     list_add(data_list, data_entry);
 
@@ -334,7 +272,6 @@ recv_data_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqn
     }
 
   }
-
 
   packetbuf_clear();
 }
@@ -362,9 +299,8 @@ timedout_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t re
 /*---------------------------------------------------------------------------*/
 // Receive valve packet
 static void
-recv_valve_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seqno)
+recv_valve_runicast(const linkaddr_t *from, const struct valve_packet *forward_valve_packet)
 {
-  struct valve_packet *forward_valve_packet = packetbuf_dataptr();
 
   if(!linkaddr_cmp(from, &parent_addr)) {
     printf("[WARN - Sensor] Receive valve information from %d.%d but parent address is %d.%d\n",
@@ -392,7 +328,7 @@ recv_valve_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seq
       list_add(valve_list, entry);
 
       if(!runicast_is_transmitting(&runicast_valve)) {
-        process_poll(&valve_data_process);
+        process_poll(&send_valve_process);
       }
 
     }
@@ -402,43 +338,38 @@ recv_valve_runicast(struct runicast_conn *c, const linkaddr_t *from, uint8_t seq
   packetbuf_clear();
 }
 
-static void
-sent_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
-{
-  printf("[INFO - Sensor] runicast valve message sent to %d.%d, retransmissions %d\n",
-   to->u8[0], to->u8[1], retransmissions);
+// static void
+// sent_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
+// {
+//   printf("[INFO - Sensor] runicast valve message sent to %d.%d, retransmissions %d\n",
+//    to->u8[0], to->u8[1], retransmissions);
 
-  process_poll(&valve_data_process);
-}
+//   process_poll(&send_valve_process);
+// }
 
-static void
-timedout_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
-{
-  printf("[WARN - Sensor] runicast valve message timed out when sending to child %d.%d, retransmissions %d\n",
-   to->u8[0], to->u8[1], retransmissions);
+// static void
+// timedout_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
+// {
+//   printf("[WARN - Sensor] runicast valve message timed out when sending to child %d.%d, retransmissions %d\n",
+//    to->u8[0], to->u8[1], retransmissions);
 
-  process_poll(&valve_data_process);
+//   process_poll(&send_valve_process);
 
-  remove_all_children_linked_to_address(to);
-}
+//   remove_all_children_linked_to_address(to);
+// }
 
 /*---------------------------------------------------------------------------*/
 
 
-static const struct runicast_callbacks runicast_data_callbacks = {
-                   recv_data_runicast,
-                   sent_data_runicast,
-                   timedout_data_runicast};
+// static const struct runicast_callbacks runicast_rank_callbacks = {
+//                    recv_rank_runicast,
+//                    sent_rank_runicast,
+//                    timedout_rank_runicast};
 
-static const struct runicast_callbacks runicast_rank_callbacks = {
-                   recv_rank_runicast,
-                   sent_rank_runicast,
-                   timedout_rank_runicast};
-
-static const struct runicast_callbacks runicast_valve_callbacks = {
-                   recv_valve_runicast,
-                   sent_valve_runicast,
-                   timedout_valve_runicast};
+// static const struct runicast_callbacks runicast_valve_callbacks = {
+//                    recv_valve_runicast,
+//                    sent_valve_runicast,
+//                    timedout_valve_runicast};
 
 
 
@@ -503,10 +434,11 @@ PROCESS_THREAD(rank_process, ev, data)
 
   static struct etimer et;
   broadcast_event = process_alloc_event();
-  runicast_open(&runicast_rank, RUNICAST_CHANNEL_BROADCAST, &runicast_rank_callbacks);
+  // runicast_open(&runicast_rank, RUNICAST_CHANNEL_BROADCAST, &runicast_rank_callbacks);
 
-  list_init(rank_list);
-  memb_init(&rank_mem);
+  // list_init(rank_list);
+  // memb_init(&rank_mem);
+  open_runicast_rank();
 
   while(1) {
 
@@ -592,7 +524,7 @@ PROCESS_THREAD(send_data_process, ev, data)
   PROCESS_EXITHANDLER(runicast_close(&runicast_data);)
   PROCESS_BEGIN();
 
-  runicast_open(&runicast_data, RUNICAST_CHANNEL_DATA, &runicast_data_callbacks);
+  open_runicast_data();
   list_init(data_list);
   memb_init(&data_mem);
 
@@ -610,8 +542,6 @@ PROCESS_THREAD(send_data_process, ev, data)
       etimer_set(&et, random_rand() % (CLOCK_SECOND * DATA_MAX_DELAY));
       PROCESS_WAIT_EVENT();
       printf("[DEBUG - Sensor] end timer or event\n");
-    } else {
-      printf("[DEBUG - Sensor] Wake up send_data_process\n");
     }
 
     while(list_length(data_list) > 0 && rank != MAX_RANK) {
@@ -649,31 +579,28 @@ PROCESS_THREAD(send_data_process, ev, data)
 
 /*---------------------------------------------------------------------------*/
 // SEND VALVE INFORMATION PROCESS
-PROCESS_THREAD(valve_data_process, ev, data)
+PROCESS_THREAD(send_valve_process, ev, data)
 {
   PROCESS_EXITHANDLER(runicast_close(&runicast_valve);)
   PROCESS_BEGIN();
 
-  runicast_open(&runicast_valve, RUNICAST_CHANNEL_VALVE, &runicast_valve_callbacks);
   list_init(children_list);
   memb_init(&children_mem);
 
-  list_init(valve_list);
-  memb_init(&valve_mem);
+  open_runicast_valve();
 
   parent_last_valve_seqno = 255; // init at maximum
-  current_valve_seqno = 0;
 
   while(1) {
 
     PROCESS_WAIT_EVENT();
-    printf("[DEBUG - Sensor] Wake up valve_data_process\n");
+    printf("[DEBUG - Sensor] Wake up send_valve_process\n");
 
     while(list_length(valve_list) > 0) {
       while (runicast_is_transmitting(&runicast_valve)) {
         printf("[DEBUG - Sensor] Wait runicast_valve: %s\n", PROCESS_CURRENT()->name);
         PROCESS_WAIT_EVENT();
-        printf("[DEBUG - Sensor] Wake up valve_data_process end of transmitting\n");
+        printf("[DEBUG - Sensor] Wake up send_valve_process end of transmitting\n");
       }
 
       struct valve_packet_address_entry *entry = list_pop(valve_list);
@@ -681,7 +608,7 @@ PROCESS_THREAD(valve_data_process, ev, data)
       linkaddr_t destination_addr = entry->address;
       packetbuf_clear();
 
-      struct children_entry *child = get_child_entry(&destination_addr);
+      struct children_entry *child = get_child_entry_address(&destination_addr);
 
       if(child == NULL) {
         printf("[WARN - Sensor] Could not send packet to %d.%d. Destination unknow\n", 
