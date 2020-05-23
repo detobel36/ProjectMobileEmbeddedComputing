@@ -11,6 +11,7 @@
 #include "random.h"
 #include <stdbool.h>
 
+
 #define NODE_TYPE "Sensor"
 
 #include "../Common/constants.c"
@@ -35,6 +36,7 @@ static uint8_t current_data_seqno;
 
 // Event
 static process_event_t new_data_event;
+static process_event_t active_led;
 /*---------------------------------------------------------------------------*/
 
 
@@ -57,8 +59,9 @@ PROCESS(rank_process, "Rank process");   // Thread define in runicastRank.c
 PROCESS(collect_data_process, "Collect Data process");
 PROCESS(send_valve_process, "Send Valve Data process");  // Thread define in runicastValve
 PROCESS(send_data_process, "Send Data process");
+PROCESS(led_process, "Manage led process");
 AUTOSTART_PROCESSES(&broadcast_process, &rank_process, &collect_data_process, &send_data_process, 
-  &send_valve_process);
+  &send_valve_process, &led_process);
 /*---------------------------------------------------------------------------*/
 
 #include "../Common/utilsChildren.c"
@@ -294,8 +297,8 @@ recv_valve_runicast(const linkaddr_t *from, const struct valve_packet *forward_v
     linkaddr_t destination_addr = forward_valve_packet->address;
 
     if(linkaddr_cmp(&destination_addr, &linkaddr_node_addr)) {
-      // TODO change led, launch timer (IN ANOTHER THRED !!!)
-      printf("[INFO - Sensor] Get valve information\n");
+      printf("[DEBUG - Sensor] Get valve information, try to open it\n");
+      process_post(&led_process, active_led, NULL);
 
     } else {
       printf("[INFO - Sensor] Get valve packet to forward to: %d.%d from: %d.%d, custom_seqno %d\n", 
@@ -468,5 +471,35 @@ PROCESS_THREAD(send_data_process, ev, data)
 }
 /*---------------------------------------------------------------------------*/
 
+/*---------------------------------------------------------------------------*/
+// MANAGE LED
+PROCESS_THREAD(led_process, ev, data)
+{
+  PROCESS_BEGIN();
+
+  active_led = process_alloc_event();
+  static struct etimer et;
+
+  while(1) {
+    // Wait 
+    PROCESS_WAIT_EVENT_UNTIL(ev == active_led);
+    printf("[INFO - Sensor] Valve is now open\n");
+    leds_on(LEDS_ALL);
+    do {
+      etimer_set(&et, CLOCK_SECOND * ACTIVE_LED_TIMER);
+      PROCESS_WAIT_EVENT_UNTIL(ev == active_led || etimer_expired(&et));
+      if(ev == active_led) {
+        printf("[INFO - Sensor] Valve is already open, reset timer\n");
+      }
+    } while(ev == active_led);
+
+    // When timer is done
+    printf("[INFO - Sensor] Timer is out, valve is now closed\n");
+    leds_off(LEDS_ALL);
+  }
+
+  PROCESS_END();
+}
+/*---------------------------------------------------------------------------*/
 
 /*===========================================================================*/

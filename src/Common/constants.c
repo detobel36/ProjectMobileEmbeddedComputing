@@ -37,4 +37,6 @@
 #define RUNICAST_CHANNEL_DATA 154      // Channel to send data
 #define RUNICAST_CHANNEL_VALVE 164     // Channel to receive valve data
 
+#define ACTIVE_LED_TIMER 600   // 60sec * 10 = 10 minutes
+
 #endif
