@@ -30,7 +30,7 @@ static uint8_t parent_rank = MAX_RANK;
 static uint16_t parent_last_rssi;
 
 // Avoid duplicate
-static uint8_t parent_last_valve_seqno;
+static uint8_t parent_last_valve_seqno = 255;
 static uint8_t current_data_seqno;
 
 // Event
@@ -55,7 +55,7 @@ LIST(valve_list);
 PROCESS(broadcast_process, "Broadcast process");
 PROCESS(rank_process, "Rank process");   // Thread define in runicastRank.c
 PROCESS(collect_data_process, "Collect Data process");
-PROCESS(send_valve_process, "Send Valve Data process");
+PROCESS(send_valve_process, "Send Valve Data process");  // Thread define in runicastValve
 PROCESS(send_data_process, "Send Data process");
 AUTOSTART_PROCESSES(&broadcast_process, &rank_process, &collect_data_process, &send_data_process, 
   &send_valve_process);
@@ -468,63 +468,5 @@ PROCESS_THREAD(send_data_process, ev, data)
 }
 /*---------------------------------------------------------------------------*/
 
-/*---------------------------------------------------------------------------*/
-// SEND VALVE INFORMATION PROCESS
-PROCESS_THREAD(send_valve_process, ev, data)
-{
-  PROCESS_EXITHANDLER(runicast_close(&runicast_valve);)
-  PROCESS_BEGIN();
-
-  list_init(children_list);
-  memb_init(&children_mem);
-
-  open_runicast_valve();
-
-  parent_last_valve_seqno = 255; // init at maximum
-
-  while(1) {
-
-    PROCESS_WAIT_EVENT();
-    printf("[DEBUG - Sensor] Wake up send_valve_process\n");
-
-    while(list_length(valve_list) > 0) {
-      while (runicast_is_transmitting(&runicast_valve)) {
-        printf("[DEBUG - Sensor] Wait runicast_valve: %s\n", PROCESS_CURRENT()->name);
-        PROCESS_WAIT_EVENT();
-        printf("[DEBUG - Sensor] Wake up send_valve_process end of transmitting\n");
-      }
-
-      struct valve_packet_entry *entry = list_pop(valve_list);
-      memb_free(&valve_mem, entry);
-      linkaddr_t destination_addr = entry->address;
-      packetbuf_clear();
-
-      struct children_entry *child = get_child_entry(&destination_addr);
-
-      if(child == NULL) {
-        printf("[WARN - Sensor] Could not send packet to %d.%d. Destination unknow\n", 
-          destination_addr.u8[0], destination_addr.u8[1]);
-      } else {
-        linkaddr_t address_to_contact = child->address_to_contact;
-
-        printf("[INFO - Sensor] Send valve information to %d.%d (%d valve in queue)\n", 
-          address_to_contact.u8[0], address_to_contact.u8[1], list_length(valve_list));
-
-        struct valve_packet packet;
-        packet.address = destination_addr;
-        packet.custom_seqno = ((++current_valve_seqno) % NUM_MAX_SEQNO);
-        packetbuf_copyfrom(&packet, sizeof(struct valve_packet));
-
-        runicast_send(&runicast_valve, &address_to_contact, MAX_RETRANSMISSIONS);
-        packetbuf_clear();
-      }
-
-    }
-
-  }
-
-  PROCESS_END();
-}
-/*---------------------------------------------------------------------------*/
 
 /*===========================================================================*/

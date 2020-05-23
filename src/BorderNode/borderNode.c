@@ -38,7 +38,7 @@ LIST(valve_list);
 
 /*---------------------------------------------------------------------------*/
 // PROCESS
-PROCESS(send_valve_process, "Send valve process");
+PROCESS(send_valve_process, "Send valve process");  // Thread define in runicastValve
 PROCESS(serialProcess, "Serial communications with server");
 PROCESS(rank_process, "Rank process");   // Thread define in runicastRank
 AUTOSTART_PROCESSES(&send_valve_process, &serialProcess, &rank_process);
@@ -154,98 +154,44 @@ static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
 
 
 /*---------------------------------------------------------------------------*/
-// SEND VALVE PROCESS
-PROCESS_THREAD(send_valve_process, ev, data)
+// RECEIVE DATA FROM SERVER
+PROCESS_THREAD(serialProcess, ev, data)
 {
   PROCESS_EXITHANDLER(broadcast_close(&broadcast);)
-
-  PROCESS_EXITHANDLER(runicast_close(&runicast_valve);)
   PROCESS_EXITHANDLER(runicast_close(&runicast_data);)
-
 
   PROCESS_BEGIN();
 
   broadcast_open(&broadcast, BROADCAST_CHANNEL, &broadcast_call);
-
   open_runicast_data();
-  open_runicast_valve();
-
 
   while(1) {
-    // TODO add delay to avoid send -> reply directly
-    PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
+      PROCESS_WAIT_EVENT_UNTIL(ev == serial_line_event_message);
 
-    while(list_length(valve_list) > 0) {
+      char* receivedData = (char *) data;
 
-      while (runicast_is_transmitting(&runicast_valve)) {
-        PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
+      char* u8_split;
+
+      u8_split = strtok(receivedData, ".");
+      uint8_t u8_0 = char_to_int(u8_split);
+      u8_split = strtok(NULL, ".");
+      uint8_t u8_1 = char_to_int(u8_split);
+
+      linkaddr_t receivedAddr;
+      receivedAddr.u8[0] = u8_0;
+      receivedAddr.u8[1] = u8_1;
+
+      printf("[INFO - Border] Open valve of node: %d.%d\n", receivedAddr.u8[0], receivedAddr.u8[1]);
+
+      struct valve_packet_entry *valve_entry = memb_alloc(&valve_mem);
+      valve_entry->address = receivedAddr;
+      list_add(valve_list, valve_entry);
+
+      if(!runicast_is_transmitting(&runicast_valve)) {
+        process_poll(&send_valve_process);
       }
-
-      struct valve_packet_entry *entry = list_pop(valve_list);
-      memb_free(&valve_mem, entry);
-      packetbuf_clear();
-
-      struct children_entry *child = get_child_entry(&entry->address);
-
-      if(child == NULL) {
-        printf("[WARN - Border] Could not send packet to %d.%d. Destination unknow\n", 
-          entry->address.u8[0], entry->address.u8[1]);
-      } else {
-        linkaddr_t address_destination = child->address_destination;
-        linkaddr_t address_to_contact = child->address_to_contact;
-
-        struct valve_packet packet;
-        packet.address = address_destination;
-        packet.custom_seqno = ((++current_valve_seqno) % NUM_MAX_SEQNO);
-        packetbuf_copyfrom(&packet, sizeof(struct valve_packet));
-
-        runicast_send(&runicast_valve, &address_to_contact, MAX_RETRANSMISSIONS);
-        printf("[INFO - Border] Send valve information with destination %d.%d (%d data in queue)\n", 
-            address_destination.u8[0], address_destination.u8[1], list_length(valve_list));
-        packetbuf_clear();
-      }
-
-    }
   }
 
   PROCESS_END();
-}
-/*---------------------------------------------------------------------------*/
-
-
-/*---------------------------------------------------------------------------*/
-// RECEIVE DATA FROM SERVER
-PROCESS_THREAD(serialProcess, ev, data)
-{
-    PROCESS_BEGIN();
-
-    while(1) {
-        PROCESS_WAIT_EVENT_UNTIL(ev == serial_line_event_message);
-
-        char* receivedData = (char *) data;
-
-        char* u8_split;
-
-        u8_split = strtok(receivedData, ".");
-        uint8_t u8_0 = char_to_int(u8_split);
-        u8_split = strtok(NULL, ".");
-        uint8_t u8_1 = char_to_int(u8_split);
-
-        linkaddr_t receivedAddr;
-        receivedAddr.u8[0] = u8_0;
-        receivedAddr.u8[1] = u8_1;
-
-        printf("[INFO - Border] Open valve of node: %d.%d\n", receivedAddr.u8[0], receivedAddr.u8[1]);
-
-        struct valve_packet_entry *valve_entry = memb_alloc(&valve_mem);
-        valve_entry->address = receivedAddr;
-        list_add(valve_list, valve_entry);
-
-        if(!runicast_is_transmitting(&runicast_valve)) {
-          process_poll(&send_valve_process);
-        }
-    }
-
-    PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
