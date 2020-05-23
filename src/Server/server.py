@@ -4,10 +4,10 @@ import serial
 import argparse
 import traceback
 import re
+from log import Log
+from constants import DEBUG
 
 from sensor import Sensor
-
-DEBUG = True
 
 
 class Server:
@@ -15,12 +15,17 @@ class Server:
     def __init__(self, serialNumber):
         self.listSensor = dict()
 
+        self.log = Log()
+
+        if(DEBUG):
+            self.log.info("Run in debug mode")
+
         self.serial = serial.Serial()
         self.serial.baudrate = 115200
         self.serial.port = '/dev/pts/' + str(serialNumber)
 
     def start(self):
-        print("[INFO] Start server")
+        self.log.info("Start server")
         self.serial.open()
 
     def listen(self):
@@ -29,7 +34,7 @@ class Server:
             matchRegex = re.match("\[DATA\] ([0-9\.]*) - ([0-9]{1,2})", line)
             if(matchRegex and len(matchRegex.groups()) == 2):
                 address, value = matchRegex.groups()
-                print("[INFO] Get value " + value + " from " + address)
+                self.log.info("Get value " + value + " from " + address)
 
                 if(address in self.listSensor):
                     self.listSensor[address].addValue(value)
@@ -43,7 +48,7 @@ class Server:
             line = self._readSerial()
 
     def stop(self):
-        print("[INFO] Stopping server")
+        self.log.info("Stopping server")
         self.serial.close()
 
     def _readSerial(self):
@@ -53,8 +58,7 @@ class Server:
         return line
 
     def _writeSerial(self, message):
-        if(DEBUG):
-            print("[DEBUG] Send data: " + str(message))
+        self.log.debug("Send data: " + str(message))
         self.serial.write((str(message).strip() + '\n').encode('ascii'))
 
 

@@ -38,16 +38,16 @@ struct data_packet_entry
     linkaddr_t address;
 };
 
+// struct valve_packet_entry
+// {
+//     struct valve_packet_entry *next;
+//     uint8_t address_u8_0;
+//     uint8_t address_u8_1;
+// };
+
 struct valve_packet_entry
 {
     struct valve_packet_entry *next;
-    uint8_t address_u8_0;
-    uint8_t address_u8_1;
-};
-
-struct valve_packet_address_entry
-{
-    struct valve_packet_address_entry *next;
     linkaddr_t address;
 };
 
