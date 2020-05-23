@@ -2,7 +2,10 @@
 
 import numpy as np
 
-DEBUG = True
+from log import Log
+from constants import DEBUG
+
+
 #NUMBER_VALUE_TO_EVAL = 30
 NUMBER_VALUE_TO_EVAL = 5  # For test
 # THRESHOLD = -5
@@ -21,15 +24,16 @@ class Sensor:
         self.address = address
         self.listValues = list()
 
+        self.log = Log()
+
     def addValue(self, value):
         self.listValues.append(int(value))
-        if(DEBUG):
-            print("[DEBUG] (" + str(self.address) + ") Add value " + str(value) + " " + \
-                "(total " + str(len(self.listValues)) + ")")
+        self.log.debug("(" + str(self.address) + ") Add value " + str(value) + " " + \
+            "(total " + str(len(self.listValues)) + ")")
 
     def _computeLeastSquareRoot(self):
         if(len(self.listValues) < NUMBER_VALUE_TO_EVAL):
-            print("[DEBUG] (" + str(self.address) + ") No enought value for valve " + \
+            self.log.debug("(" + str(self.address) + ") No enought value for valve " + \
                 "(total " + str(len(self.listValues)) + ")")
             return None
 
@@ -37,7 +41,7 @@ class Sensor:
         y = np.array(self.listValues[len(self.listValues)-NUMBER_VALUE_TO_EVAL:])
         A = np.vstack([x, np.ones(len(x))]).T
         m, c = np.linalg.lstsq(A, y, rcond=None)[0]
-        print("[INFO] (" + str(self.address) + ") Leas Square Root value: " + str(m))
+        self.log.info("(" + str(self.address) + ") Leas Square Root value: " + str(round(m, 2)))
 
         return m < THRESHOLD
 
@@ -45,7 +49,6 @@ class Sensor:
     # TODO update this name
     def getOpenValve(self):
         openValve = self._computeLeastSquareRoot()
-        if(DEBUG):
-            print("[DEBUG] (" + str(self.address) + ") Need open valve: " + str(openValve))
+        self.log.debug("(" + str(self.address) + ") Need open valve: " + str(openValve))
 
         return openValve
