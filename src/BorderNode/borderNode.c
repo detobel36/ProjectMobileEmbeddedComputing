@@ -40,7 +40,7 @@ LIST(valve_list);
 // PROCESS
 PROCESS(send_valve_process, "Send valve process");
 PROCESS(serialProcess, "Serial communications with server");
-PROCESS(rank_process, "Rank process");
+PROCESS(rank_process, "Rank process");   // Thread define in runicastRank
 AUTOSTART_PROCESSES(&send_valve_process, &serialProcess, &rank_process);
 /*---------------------------------------------------------------------------*/
 
@@ -206,58 +206,6 @@ PROCESS_THREAD(send_valve_process, ev, data)
       }
 
     }
-  }
-
-  PROCESS_END();
-}
-/*---------------------------------------------------------------------------*/
-
-
-/*---------------------------------------------------------------------------*/
-// SEND RANK RESPONSE
-PROCESS_THREAD(rank_process, ev, data)
-{
-  PROCESS_EXITHANDLER(runicast_close(&runicast_rank);)
-
-  PROCESS_BEGIN();
-
-  static struct etimer et;
-  // runicast_open(&runicast_rank, RUNICAST_CHANNEL_BROADCAST, &runicast_rank_callbacks);
-
-  // list_init(rank_list);
-  // memb_init(&rank_mem);
-  open_runicast_rank();
-
-  while(1) {
-    PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
-
-    // Add delay to reply
-    etimer_set(&et, random_rand() % (CLOCK_SECOND * BROADCAST_REPLY_DELAY));
-    // If event or timer
-    PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
-
-    while(list_length(rank_list) > 0) {
-      while (runicast_is_transmitting(&runicast_rank)) {
-        PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
-      }
-
-      struct rank_packet_entry *entry = list_pop(rank_list);
-      memb_free(&rank_mem, entry);
-      linkaddr_t destination_addr = entry->destination;
-      packetbuf_clear();
-
-      printf("[INFO - Border] Send rank information to %d.%d (%d rank in queue)\n", 
-        destination_addr.u8[0], destination_addr.u8[1], list_length(rank_list));
-
-      struct rank_packet packet;
-      packet.rank = rank;
-      packetbuf_copyfrom(&packet, sizeof(struct rank_packet));
-
-      runicast_send(&runicast_rank, &destination_addr, MAX_RETRANSMISSIONS);
-      packetbuf_clear();
-
-    }
-
   }
 
   PROCESS_END();
