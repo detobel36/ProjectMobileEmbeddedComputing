@@ -39,4 +39,8 @@
 
 #define ACTIVE_LED_TIMER 600   // 60sec * 10 = 10 minutes
 
+
+#define NUMBER_SENSOR_IN_COMPUTATION 5  // If modified, do not forget to init new list
+#define NUMBER_OF_DATA_TO_COMPUTE 30
+
 #endif

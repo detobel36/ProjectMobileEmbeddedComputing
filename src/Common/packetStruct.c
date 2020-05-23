@@ -5,21 +5,21 @@
 
 struct rank_packet 
 {
-    uint8_t rank;
+  uint8_t rank;
 };
 
 struct data_packet
 {
-    uint8_t custom_seqno;
-    uint8_t data;
-    linkaddr_t address;
+  uint8_t custom_seqno;
+  uint8_t data;
+  linkaddr_t address;
 };
 
 // Valve packet always tell that the valve need to be open
 struct valve_packet
 {
-    uint8_t custom_seqno;
-    linkaddr_t address;
+  uint8_t custom_seqno;
+  linkaddr_t address;
 };
 
 
@@ -27,37 +27,43 @@ struct valve_packet
 
 struct rank_packet_entry
 {
-    struct rank_packet_entry *next;
-    linkaddr_t destination;
+  struct rank_packet_entry *next;
+  linkaddr_t destination;
 };
 
 struct data_packet_entry
 {
-    struct data_packet_entry *next;
-    uint8_t data;
-    linkaddr_t address;
+  struct data_packet_entry *next;
+  uint8_t data;
+  linkaddr_t address;
 };
-
-// struct valve_packet_entry
-// {
-//     struct valve_packet_entry *next;
-//     uint8_t address_u8_0;
-//     uint8_t address_u8_1;
-// };
 
 struct valve_packet_entry
 {
-    struct valve_packet_entry *next;
-    linkaddr_t address;
+  struct valve_packet_entry *next;
+  linkaddr_t address;
 };
 
 struct children_entry
 {
-    struct children_entry *next;
-    linkaddr_t address_destination;
-    linkaddr_t address_to_contact;
-    uint8_t last_custom_seqno;
-    struct ctimer ctimer;
+  struct children_entry *next;
+  linkaddr_t address_destination;
+  linkaddr_t address_to_contact;
+  uint8_t last_custom_seqno;
+  struct ctimer ctimer;
+};
+
+struct saved_node_to_compute_entry
+{
+  struct saved_node_to_compute_entry *next;
+  linkaddr_t from;
+  struct ctimer ctimer;
+};
+
+struct saved_data_to_compute_entry
+{
+  struct saved_data_to_compute_entry *next;
+  uint8_t data;
 };
 
 

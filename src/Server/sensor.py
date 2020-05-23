@@ -41,10 +41,6 @@ class Sensor:
             str(dataForLeastSquareRoot))
         m = leastSquareRoot(dataForLeastSquareRoot)
 
-        # x = np.array([i for i in range(NUMBER_VALUE_TO_EVAL)])
-        # y = np.array(self.listValues[len(self.listValues)-NUMBER_VALUE_TO_EVAL:])
-        # A = np.vstack([x, np.ones(len(x))]).T
-        # m, c = np.linalg.lstsq(A, y, rcond=None)[0]
         self.log.info("(" + str(self.address) + ") Leas Square Root value: " + str(round(m, 2)))
 
         return m < THRESHOLD
