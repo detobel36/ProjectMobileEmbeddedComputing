@@ -7,7 +7,6 @@
 #include "lib/memb.h"
 
 #include "dev/button-sensor.h"
-#include "dev/leds.h"
 #include "dev/serial-line.h"
 #include "random.h"
 #include <stdbool.h>
@@ -171,7 +170,6 @@ PROCESS_THREAD(serialProcess, ev, data)
       char* receivedData = (char *) data;
 
       char* u8_split;
-
       u8_split = strtok(receivedData, ".");
       uint8_t u8_0 = char_to_int(u8_split);
       u8_split = strtok(NULL, ".");
