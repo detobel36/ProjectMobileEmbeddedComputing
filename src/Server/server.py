@@ -9,6 +9,8 @@ from constants import DEBUG
 
 from sensor import Sensor
 
+from leastSquareRoot import leastSquareRoot
+
 
 class Server:
 
@@ -64,16 +66,31 @@ class Server:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('serial', type=int,
+    parser.add_argument('--serial', type=int,
                     help='Serial device of border node (/dev/pts/<serial>)')
+    parser.add_argument('--test', nargs='+', type=int, 
+        help='Test least square root with specific data')
     args = parser.parse_args()
 
-    server = Server(args.serial)
-    server.start()
+    if(args.test != None):
+        print("==================================================")
+        print("Test to comput least square root of values:")
+        print(str(args.test))
+        m = leastSquareRoot(args.test)
+        print("Result or test: " + str(round(m, 2)))
+        print("==================================================")
 
-    try:
-        server.listen()
-    except KeyboardInterrupt:
-        server.stop()
-    # except:
-    #     print("[SEVERE] Unexpected error: " + str(traceback.format_exc()))
+    if(args.serial != None):
+        server = Server(args.serial)
+        server.start()
+
+        try:
+            server.listen()
+        except KeyboardInterrupt:
+            server.stop()
+
+    if(args.test == None and args.serial == None):
+        print("Nothing to execute, please use '--help' to view help")
+        
+
+

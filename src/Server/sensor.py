@@ -1,9 +1,8 @@
 #!/usr/bin/python
 
-import numpy as np
-
 from log import Log
 from constants import DEBUG
+from leastSquareRoot import leastSquareRoot
 
 
 #NUMBER_VALUE_TO_EVAL = 30
@@ -37,10 +36,15 @@ class Sensor:
                 "(total " + str(len(self.listValues)) + ")")
             return None
 
-        x = np.array([i for i in range(NUMBER_VALUE_TO_EVAL)])
-        y = np.array(self.listValues[len(self.listValues)-NUMBER_VALUE_TO_EVAL:])
-        A = np.vstack([x, np.ones(len(x))]).T
-        m, c = np.linalg.lstsq(A, y, rcond=None)[0]
+        dataForLeastSquareRoot = self.listValues[len(self.listValues)-NUMBER_VALUE_TO_EVAL:]
+        self.log.debug("(" + str(self.address) + ") Compute least square root of value: " + \
+            str(dataForLeastSquareRoot))
+        m = leastSquareRoot(dataForLeastSquareRoot)
+
+        # x = np.array([i for i in range(NUMBER_VALUE_TO_EVAL)])
+        # y = np.array(self.listValues[len(self.listValues)-NUMBER_VALUE_TO_EVAL:])
+        # A = np.vstack([x, np.ones(len(x))]).T
+        # m, c = np.linalg.lstsq(A, y, rcond=None)[0]
         self.log.info("(" + str(self.address) + ") Leas Square Root value: " + str(round(m, 2)))
 
         return m < THRESHOLD
