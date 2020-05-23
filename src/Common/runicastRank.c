@@ -1,8 +1,8 @@
 #ifndef runicast_rank_c
 #define runicast_rank_c
 
-#include "../Common/Constants.c"
-#include "../Common/PacketStruct.c"
+#include "../Common/constants.c"
+#include "../Common/packetStruct.c"
 
 static struct runicast_conn runicast_rank;
 
@@ -11,7 +11,9 @@ MEMB(rank_mem, struct rank_packet_entry, NUM_MAX_CHILDREN);
 LIST(rank_list);
 
 
-static void create_rank_response_packet(const linkaddr_t *from) {
+static void 
+create_rank_response_packet(const linkaddr_t *from) 
+{
   struct rank_packet_entry *packet_response = memb_alloc(&rank_mem);
     packet_response->destination = *from;
     printf("[INFO - %s] Create response rank for %d.%d\n", NODE_TYPE, from->u8[0], from->u8[1]);
@@ -56,7 +58,9 @@ static const struct runicast_callbacks runicast_rank_callbacks = {
                    sent_rank_runicast,
                    timedout_rank_runicast};
 
-static void open_runicast_rank() {
+static void 
+open_runicast_rank() 
+{
   runicast_open(&runicast_rank, RUNICAST_CHANNEL_BROADCAST, &runicast_rank_callbacks);
 
   list_init(rank_list);

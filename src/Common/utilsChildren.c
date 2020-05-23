@@ -3,25 +3,21 @@
 
 #include <stdbool.h>
 
-#include "../Common/Constants.c"
-#include "../Common/PacketStruct.c"
+#include "../Common/constants.c"
+#include "../Common/packetStruct.c"
 
 
 MEMB(children_mem, struct children_entry, NUM_MAX_CHILDREN);
 LIST(children_list);
 
-static struct children_entry* get_child_entry(const uint8_t u8_0, const uint8_t u8_1) {
+static struct children_entry* get_child_entry(const linkaddr_t *destination_addr) {
   struct children_entry *child;
   for(child = list_head(children_list); child != NULL; child = list_item_next(child)) {
-    if(child->address_destination.u8[0] == u8_0 && child->address_destination.u8[1] == u8_1) {
+    if(linkaddr_cmp(destination_addr, &child->address_destination)) {
       break;
     }
   }
   return child;
-}
-
-static struct children_entry* get_child_entry_address(const linkaddr_t *destination_addr) {
-  return get_child_entry(destination_addr->u8[0], destination_addr->u8[1]);
 }
 
 static void remove_children(void *child_entry_ptr) {
@@ -62,11 +58,11 @@ create_child_or_udpate_and_detect_duplicate(struct children_entry *child,
   } else {
 
       if(child->last_custom_seqno == custom_seqno) {
-        printf("[WARN - %s] Detect duplicate data from %d.%d source %d.%d (data: %d)\n", 
+        printf("[WARN - %s] Detect duplicate data from %d.%d source %d.%d data: %d (custom seqno %d)\n", 
           NODE_TYPE, 
           child->address_to_contact.u8[0], child->address_to_contact.u8[1], 
           child->address_destination.u8[0], child->address_destination.u8[1],
-          data);
+          data, custom_seqno);
 
         packetbuf_clear();
         return true;

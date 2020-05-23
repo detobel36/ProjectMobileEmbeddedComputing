@@ -37,6 +37,7 @@ class Sensor:
         y = np.array(self.listValues[len(self.listValues)-NUMBER_VALUE_TO_EVAL:])
         A = np.vstack([x, np.ones(len(x))]).T
         m, c = np.linalg.lstsq(A, y, rcond=None)[0]
+        print("[INFO] (" + str(self.address) + ") Leas Square Root value: " + str(m))
 
         return m < THRESHOLD
 

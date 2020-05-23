@@ -1,8 +1,8 @@
 #ifndef runicast_valve_c
 #define runicast_valve_c
 
-#include "../Common/Constants.c"
-#include "../Common/PacketStruct.c"
+#include "../Common/constants.c"
+#include "../Common/packetStruct.c"
 
 static struct runicast_conn runicast_valve;
 static uint8_t current_valve_seqno;
@@ -45,7 +45,8 @@ static const struct runicast_callbacks runicast_valve_callbacks = {
                    timedout_valve_runicast};
 
 static void
-open_runicast_valve() {
+open_runicast_valve() 
+{
   runicast_open(&runicast_valve, RUNICAST_CHANNEL_VALVE, &runicast_valve_callbacks);
 
   list_init(valve_list);

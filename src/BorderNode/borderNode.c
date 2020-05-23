@@ -14,8 +14,8 @@
 
 #define NODE_TYPE "Border"
 
-#include "../Common/Constants.c"
-#include "../Common/PacketStruct.c"
+#include "../Common/constants.c"
+#include "../Common/packetStruct.c"
 
 
 /*---------------------------------------------------------------------------*/
@@ -29,17 +29,10 @@ static uint8_t rank = 0;
 // Allocate memory
 
 // Doc about list: http://contiki.sourceforge.net/docs/2.6/a01682.html
-// Save all children
-// MEMB(children_mem, struct children_entry, NUM_MAX_CHILDREN);
-// LIST(children_list);
 
 // Save valve packet
 MEMB(valve_mem, struct valve_packet_entry, NUM_DATA_IN_QUEUE);
 LIST(valve_list);
-
-// // Save rank packet
-// MEMB(rank_mem, struct rank_packet_entry, NUM_MAX_CHILDREN);
-// LIST(rank_list);
 /*---------------------------------------------------------------------------*/
 
 
@@ -51,7 +44,7 @@ PROCESS(rank_process, "Rank process");
 AUTOSTART_PROCESSES(&send_valve_process, &serialProcess, &rank_process);
 /*---------------------------------------------------------------------------*/
 
-#include "../Common/UtilsChildren.c"
+#include "../Common/utilsChildren.c"
 
 #include "../Common/runicastData.c"
 #include "../Common/runicastRank.c"
@@ -61,7 +54,8 @@ AUTOSTART_PROCESSES(&send_valve_process, &serialProcess, &rank_process);
 /*---------------------------------------------------------------------------*/
 // UTILS
 
-static uint8_t char_to_int(char* char_text)
+static uint8_t 
+char_to_int(char* char_text)
 {
   uint8_t result = 0;
   int i;
@@ -96,22 +90,6 @@ recv_rank_runicast(const linkaddr_t *from, const struct rank_packet *rank_packet
   printf("[SEVERE - Border] Not normal to be here (recv_rank_runicast)\n");
 }
 
-// static void
-// sent_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
-// {
-//   printf("[INFO - Border] runicast rank message sent to %d.%d, retransmissions %d\n",
-//    to->u8[0], to->u8[1], retransmissions);
-//   process_poll(&rank_process);
-// }
-
-// static void
-// timedout_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
-// {
-//   printf("[WARN - Border] runicast rank message timed out when sending to %d.%d, retransmissions %d\n",
-//    to->u8[0], to->u8[1], retransmissions);
-//   process_poll(&rank_process);
-// }
-
 /*---------------------------------------------------------------------------*/
 
 
@@ -124,7 +102,7 @@ recv_data_runicast(const linkaddr_t *from, const struct data_packet *data_packet
   linkaddr_t source_addr = data_packet->address;
 
   // Save children
-  struct children_entry *child = get_child_entry(source_addr.u8[0], source_addr.u8[1]);
+  struct children_entry *child = get_child_entry(&source_addr);
   if(create_child_or_udpate_and_detect_duplicate(child, from, custom_seqno, source_addr, data_packet->data)) {
     return;
   }
@@ -161,26 +139,6 @@ recv_valve_runicast(const linkaddr_t *from, const struct valve_packet *forward_v
   printf("[SEVERE - Border] Not normal to receive valve packet (from %d.%d)\n", 
     from->u8[0], from->u8[1]);
 }
-
-// static void
-// sent_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
-// {
-//   printf("[INFO - Border] runicast valve message sent to %d.%d, retransmissions %d\n",
-//    to->u8[0], to->u8[1], retransmissions);
-
-//   process_poll(&send_valve_process);
-// }
-
-// static void
-// timedout_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
-// {
-//   printf("[WARN - Border] runicast valve message timed out when sending to %d.%d, retransmissions %d\n",
-//    to->u8[0], to->u8[1], retransmissions);
-
-//   process_poll(&send_valve_process);
-
-//   remove_all_children_linked_to_address(to);
-// }
 /*---------------------------------------------------------------------------*/
 
 
@@ -188,15 +146,6 @@ recv_valve_runicast(const linkaddr_t *from, const struct valve_packet *forward_v
 
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
 
-// static const struct runicast_callbacks runicast_rank_callbacks = {
-//                    recv_rank_runicast,
-//                    sent_rank_runicast,
-//                    timedout_rank_runicast};
-
-// static const struct runicast_callbacks runicast_valve_callbacks = {
-//                    recv_valve_runicast,
-//                    sent_valve_runicast,
-//                    timedout_valve_runicast};
 /*---------------------------------------------------------------------------*/
 
 
@@ -236,11 +185,11 @@ PROCESS_THREAD(send_valve_process, ev, data)
       memb_free(&valve_mem, entry);
       packetbuf_clear();
 
-      struct children_entry *child = get_child_entry(entry->address_u8_0, entry->address_u8_1);
+      struct children_entry *child = get_child_entry(&entry->address);
 
       if(child == NULL) {
         printf("[WARN - Border] Could not send packet to %d.%d. Destination unknow\n", 
-          entry->address_u8_0, entry->address_u8_1);
+          entry->address.u8[0], entry->address.u8[1]);
       } else {
         linkaddr_t address_destination = child->address_destination;
         linkaddr_t address_to_contact = child->address_to_contact;
@@ -334,11 +283,14 @@ PROCESS_THREAD(serialProcess, ev, data)
         u8_split = strtok(NULL, ".");
         uint8_t u8_1 = char_to_int(u8_split);
 
-        printf("[INFO - Border] Open valve of node: %d.%d\n", u8_0, u8_1);
+        linkaddr_t receivedAddr;
+        receivedAddr.u8[0] = u8_0;
+        receivedAddr.u8[1] = u8_1;
+
+        printf("[INFO - Border] Open valve of node: %d.%d\n", receivedAddr.u8[0], receivedAddr.u8[1]);
 
         struct valve_packet_entry *valve_entry = memb_alloc(&valve_mem);
-        valve_entry->address_u8_0 = u8_0;
-        valve_entry->address_u8_1 = u8_1;
+        valve_entry->address = receivedAddr;
         list_add(valve_list, valve_entry);
 
         if(!runicast_is_transmitting(&runicast_valve)) {
