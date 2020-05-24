@@ -34,6 +34,7 @@ struct rank_packet_entry
 struct data_packet_entry
 {
   struct data_packet_entry *next;
+  uint8_t custom_seqno;
   uint8_t data;
   linkaddr_t address;
 };

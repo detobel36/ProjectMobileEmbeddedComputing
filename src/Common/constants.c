@@ -25,7 +25,7 @@
 // Max size of the network (border node need to have all children)
 #define NUM_MAX_CHILDREN 100
 
-#define CHILDREN_TIMEOUT 120
+#define CHILDREN_TIMEOUT 150   // A litle bit more than 2 minutes (because data are not always send directly)
 
 // Communication channel
 #define BROADCAST_CHANNEL 129          // Broadcast to know parent
@@ -39,7 +39,7 @@
 #define TIME_TO_FORCE_COMPUTATION_OF_DATA 30  // 30 secondes
 
 #define NUMBER_SENSOR_IN_COMPUTATION 5  // If modified, do not forget to init new list
-#define NUMBER_OF_DATA_TO_COMPUTE 5 // TODO Change by 30
-#define THRESHOLD -255  // TODO change this data to real value
+#define NUMBER_OF_DATA_TO_COMPUTE 30
+#define THRESHOLD 0  // TODO change this data to real value
 
 #endif

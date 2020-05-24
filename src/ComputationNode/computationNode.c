@@ -402,6 +402,7 @@ recv_data_runicast(const linkaddr_t *from, const struct data_packet *data_packet
     data_packet->data, source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1], 
     parent_addr.u8[0], parent_addr.u8[1], custom_seqno);
   struct data_packet_entry *data_entry = memb_alloc(&data_mem);
+  data_entry->custom_seqno = custom_seqno+1;
   data_entry->data = data_packet->data;
   data_entry->address = source_addr;
   list_add(data_list, data_entry);
@@ -578,7 +579,7 @@ PROCESS_THREAD(send_data_process, ev, data)
       packetbuf_clear();
 
       struct data_packet packet;
-      packet.custom_seqno = ((++current_data_seqno) % NUM_MAX_SEQNO);
+      packet.custom_seqno = entry->custom_seqno;
       packet.data = entry->data;
       packet.address = entry->address;
       packetbuf_copyfrom(&packet, sizeof(struct data_packet));
@@ -602,6 +603,10 @@ PROCESS_THREAD(compute_data_process, ev, data)
   static struct etimer et;
 
   PROCESS_BEGIN();
+
+  // Inform parameters
+  printf("[INFO - Computation] Start Computation node with %d slot for nodes, collect %d data before computation and threshold is define on %d\n",
+    NUMBER_SENSOR_IN_COMPUTATION, NUMBER_OF_DATA_TO_COMPUTE, THRESHOLD);
 
   list_init(save_node_list);
   memb_init(&save_node_mem);

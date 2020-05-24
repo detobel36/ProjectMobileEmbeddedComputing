@@ -5,10 +5,10 @@ from constants import DEBUG
 from leastSquareRoot import leastSquareRoot
 
 
-#NUMBER_VALUE_TO_EVAL = 30
-NUMBER_VALUE_TO_EVAL = 5  # For test
-# THRESHOLD = -5
-THRESHOLD = -1000000
+NUMBER_VALUE_TO_EVAL = 30
+# NUMBER_VALUE_TO_EVAL = 5  # For test
+THRESHOLD = 0
+# THRESHOLD = -1000000
 
 
 """
