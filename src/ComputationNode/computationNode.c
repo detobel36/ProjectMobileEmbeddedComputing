@@ -143,6 +143,142 @@ registerParent(const linkaddr_t from, const uint8_t getting_rank, const uint16_t
 
 
 /*---------------------------------------------------------------------------*/
+// Manage data for the computation
+static list_t* 
+get_empty_saved_data_list()
+{
+  struct list_of_list_saved_data_entry *list_of_list_entry;
+
+  for(list_of_list_entry = list_head(list_of_list_data_list); list_of_list_entry != NULL; 
+    list_of_list_entry = list_item_next(list_of_list_entry)) {
+
+    if(list_length(*list_of_list_entry->saved_data_list) == 0) {
+      return list_of_list_entry->saved_data_list;
+    }
+  }
+  return NULL;
+}
+
+static void 
+extra_remove_children(const linkaddr_t address_destination) 
+{
+  struct saved_node_to_compute_entry *node_entry;
+  for(node_entry = list_head(save_node_list); node_entry != NULL; node_entry = list_item_next(node_entry)) {
+    if(linkaddr_cmp(&node_entry->from, &address_destination)) {
+      break;
+    }
+  }
+
+  if(node_entry != NULL) {
+    list_t *saved_data_list = node_entry->saved_data_list;
+
+    struct saved_data_to_compute_entry *saved_data;
+    struct saved_data_to_compute_entry *new_saved_data;
+    for(saved_data = list_head(*saved_data_list); saved_data != NULL; saved_data = new_saved_data) {
+      new_saved_data = list_item_next(saved_data);
+
+      list_remove(*saved_data_list, saved_data);
+      memb_free(&save_data_mem, saved_data);
+    }
+
+    list_remove(save_node_list, node_entry);
+    memb_free(&save_node_mem, node_entry);
+    printf("[DEBUG - Computation] Remove all data of the node %d.%d\n", 
+      address_destination.u8[0], address_destination.u8[1]);
+
+  }
+
+}
+
+static double 
+computeLeastSquare(list_t* saved_data_list) 
+{
+  double x = 0;
+  double x2 = 0;
+  double xy = 0;
+  double y = 0;
+  double y2 = 0;
+
+  uint8_t i = 0;
+  struct saved_data_to_compute_entry *saved_data;
+  printf("[DEBUG - Computation] Data: ");
+  for(saved_data = list_head(*saved_data_list); saved_data != NULL; saved_data = list_item_next(saved_data)) {
+    printf("%d ", saved_data->data);
+
+    x  += i;
+    x2 += i * i;
+    xy += i * saved_data->data;
+    y  += saved_data->data; 
+    y2 += saved_data->data * saved_data->data;
+
+    ++i;
+  }
+  printf("\n");
+
+  if(i != NUMBER_OF_DATA_TO_COMPUTE) {
+    printf("[SEVERE - Computation] Number of data computed (%d) not equals to %d\n", i, 
+      NUMBER_OF_DATA_TO_COMPUTE);
+  }
+
+  double denom = (NUMBER_OF_DATA_TO_COMPUTE * x2 - x*x);
+
+  return (NUMBER_OF_DATA_TO_COMPUTE * xy  -  x * y) / denom;
+}
+
+
+static bool
+try_to_save_data_to_compute(const struct data_packet *data_packet)
+{
+
+  struct saved_node_to_compute_entry *node_entry;
+  for(node_entry = list_head(save_node_list); node_entry != NULL; node_entry = list_item_next(node_entry)) {
+    if(linkaddr_cmp(&node_entry->from, &data_packet->address)) {
+      break;
+    }
+  }
+
+  if(node_entry == NULL && list_length(save_node_list) < NUMBER_SENSOR_IN_COMPUTATION) {
+    list_t* empty_saved_data = get_empty_saved_data_list();
+    if(empty_saved_data == NULL) {
+      printf("[SEVERE - Computation] Place in save_node_list (length %d) but no empty_saved_data !\n",
+        list_length(save_node_list));
+      return false;
+    }
+
+    node_entry = memb_alloc(&save_node_mem);
+    node_entry->from = data_packet->address;
+    node_entry->saved_data_list = empty_saved_data;
+    list_push(save_node_list, node_entry);
+  }
+
+  if(node_entry != NULL) {
+    // If list of data is full
+    if(list_length(*node_entry->saved_data_list) == NUMBER_OF_DATA_TO_COMPUTE) {
+      // Remove latest
+      void * removed_elem = list_pop(*node_entry->saved_data_list);
+      memb_free(&save_data_mem, removed_elem);
+      printf("[DEBUG - Computation] Remove oldest element of %d.%d, length of list %d\n", 
+        data_packet->address.u8[0], data_packet->address.u8[1],
+        list_length(*node_entry->saved_data_list));
+    }
+
+    struct saved_data_to_compute_entry *saved_data = memb_alloc(&save_data_mem);
+    saved_data->data = data_packet->data;
+    list_add(*node_entry->saved_data_list, saved_data);
+    node_entry->already_computed = false;
+    printf("[INFO - Computation] Save data %d of node %d.%d (total: %d)\n", data_packet->data, 
+      data_packet->address.u8[0], data_packet->address.u8[1], 
+      list_length(*node_entry->saved_data_list));
+    process_poll(&compute_data_process);
+    return true;
+  }
+
+  return false;
+}
+/*---------------------------------------------------------------------------*/
+
+
+/*---------------------------------------------------------------------------*/
 // Receive broadcast
 static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
@@ -228,137 +364,6 @@ recv_rank_runicast(const linkaddr_t *from, const struct rank_packet *rank_packet
   packetbuf_clear();
 }
 /*---------------------------------------------------------------------------*/
-
-// TODO Move following methods
-static void extra_remove_children(const linkaddr_t address_destination) {
-  struct saved_node_to_compute_entry *node_entry;
-  for(node_entry = list_head(save_node_list); node_entry != NULL; node_entry = list_item_next(node_entry)) {
-    if(linkaddr_cmp(&node_entry->from, &address_destination)) {
-      break;
-    }
-  }
-
-  if(node_entry != NULL) {
-    list_t *saved_data_list = node_entry->saved_data_list;
-
-    struct saved_data_to_compute_entry *saved_data;
-    for(saved_data = list_head(*saved_data_list); saved_data != NULL; saved_data = list_item_next(saved_data)) {
-      list_remove(*saved_data_list, saved_data);
-      memb_free(&save_data_mem, saved_data);
-    }
-
-    list_remove(save_node_list, node_entry);
-    memb_free(&save_node_mem, node_entry);
-    printf("[DEBUG - Computation] Remove all data of the node %d.%d\n", 
-      address_destination.u8[0], address_destination.u8[1]);
-
-    printf("[DEBUG - Computation] Try to have empty saved list now\n");
-    list_t* empty_list = get_empty_saved_data_list();
-    if(empty_list == NULL) {
-      printf("[DEBUG - Computation] No empty listy\n");
-    }
-    
-  }
-
-}
-
-static list_t* 
-get_empty_saved_data_list()
-{
-  struct list_of_list_saved_data_entry *list_of_list_entry;
-
-  for(list_of_list_entry = list_head(list_of_list_data_list); list_of_list_entry != NULL; 
-    list_of_list_entry = list_item_next(list_of_list_entry)) {
-
-    if(list_length(*list_of_list_entry->saved_data_list) == 0) {
-      return list_of_list_entry->saved_data_list;
-    }
-
-  }
-  return NULL;
-}
-
-static double computeLeastSquare(list_t* saved_data_list) {
-  double x = 0;
-  double x2 = 0;
-  double xy = 0;
-  double y = 0;
-  double y2 = 0;
-
-  uint8_t i = 0;
-  struct saved_data_to_compute_entry *saved_data;
-  for(saved_data = list_head(*saved_data_list); saved_data != NULL; saved_data = list_item_next(saved_data)) {
-    printf("[DEBUG - Computation] Data: %d\n", saved_data->data);
-
-    x  += i;
-    x2 += i * i;
-    xy += i * saved_data->data;
-    y  += saved_data->data; 
-    y2 += saved_data->data * saved_data->data;
-
-    ++i;
-  }
-
-  if(i != NUMBER_OF_DATA_TO_COMPUTE) {
-    printf("[SEVERE - Computation] Number of data computed (%d) not equals to %d\n", i, 
-      NUMBER_OF_DATA_TO_COMPUTE);
-  }
-
-  double denom = (NUMBER_OF_DATA_TO_COMPUTE * x2 - x*x);
-
-  return (NUMBER_OF_DATA_TO_COMPUTE * xy  -  x * y) / denom;
-}
-
-
-static bool
-try_to_save_data_to_compute(const struct data_packet *data_packet)
-{
-
-  struct saved_node_to_compute_entry *node_entry;
-  for(node_entry = list_head(save_node_list); node_entry != NULL; node_entry = list_item_next(node_entry)) {
-    if(linkaddr_cmp(&node_entry->from, &data_packet->address)) {
-      break;
-    }
-  }
-
-  if(node_entry == NULL && list_length(save_node_list) < NUMBER_SENSOR_IN_COMPUTATION) {
-    list_t* empty_saved_data = get_empty_saved_data_list();
-    if(empty_saved_data == NULL) {
-      printf("[SEVERE - Computation] Place in save_node_list (length %d) but no empty_saved_data !\n",
-        list_length(save_node_list));
-      return false;
-    }
-
-    node_entry = memb_alloc(&save_node_mem);
-    node_entry->from = data_packet->address;
-    node_entry->saved_data_list = empty_saved_data;
-    list_push(save_node_list, node_entry);
-  }
-
-  if(node_entry != NULL) {
-    // If list of data is full
-    if(list_length(*node_entry->saved_data_list) == NUMBER_OF_DATA_TO_COMPUTE) {
-      // Remove latest
-      void * removed_elem = list_pop(*node_entry->saved_data_list);
-      memb_free(&save_data_mem, removed_elem);
-      printf("[DEBUG - Computation] Remove oldest element of %d.%d, length of list %d\n", 
-        data_packet->address.u8[0], data_packet->address.u8[1],
-        list_length(*node_entry->saved_data_list));
-    }
-
-    struct saved_data_to_compute_entry *saved_data = memb_alloc(&save_data_mem);
-    saved_data->data = data_packet->data;
-    list_add(*node_entry->saved_data_list, saved_data);
-    node_entry->already_computed = false;
-    printf("[INFO - Computation] Save data %d of node %d.%d (total: %d)\n", data_packet->data, 
-      data_packet->address.u8[0], data_packet->address.u8[1], 
-      list_length(*node_entry->saved_data_list));
-    process_poll(&compute_data_process);
-    return true;
-  }
-
-  return false;
-}
 
 
 /*---------------------------------------------------------------------------*/
@@ -654,7 +659,7 @@ PROCESS_THREAD(compute_data_process, ev, data)
           struct valve_packet_entry *valve_entry = memb_alloc(&valve_mem);
           valve_entry->address = node_entry->from;
           list_add(valve_list, valve_entry);
-          printf("[INFO - Computation] Send valve to %d.%d\n", node_entry->from.u8[0], 
+          printf("[INFO - Computation] Open valve of node: %d.%d\n", node_entry->from.u8[0], 
             node_entry->from.u8[1]);
 
           if(!runicast_is_transmitting(&runicast_valve)) {

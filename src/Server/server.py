@@ -38,10 +38,10 @@ class Server:
                 address, value = matchRegex.groups()
                 self.log.info("Get value " + value + " from " + address)
 
-                if(address in self.listSensor):
-                    self.listSensor[address].addValue(value)
-                else:
+                if(address not in self.listSensor):
                     self.listSensor[address] = Sensor(address)
+
+                self.listSensor[address].addValue(value)
 
                 openValve = self.listSensor[address].getOpenValve()
                 if(openValve != None and openValve):
