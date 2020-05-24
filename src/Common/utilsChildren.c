@@ -10,7 +10,9 @@
 MEMB(children_mem, struct children_entry, NUM_MAX_CHILDREN);
 LIST(children_list);
 
-static struct children_entry* get_child_entry(const linkaddr_t *destination_addr) {
+static struct children_entry* 
+get_child_entry(const linkaddr_t *destination_addr) 
+{
   struct children_entry *child;
   for(child = list_head(children_list); child != NULL; child = list_item_next(child)) {
     if(linkaddr_cmp(destination_addr, &child->address_destination)) {
@@ -20,7 +22,12 @@ static struct children_entry* get_child_entry(const linkaddr_t *destination_addr
   return child;
 }
 
-static void remove_children(void *child_entry_ptr) {
+static void
+extra_remove_children(const linkaddr_t address_destination);
+
+static void 
+remove_children(void *child_entry_ptr) 
+{
   struct children_entry *child_entry = child_entry_ptr;
   printf("[INFO - %s] Remove children %d.%d: no recent message\n", NODE_TYPE, 
     child_entry->address_destination.u8[0], 
@@ -28,6 +35,8 @@ static void remove_children(void *child_entry_ptr) {
 
   list_remove(children_list, child_entry);
   memb_free(&children_mem, child_entry);
+
+  extra_remove_children(child_entry->address_destination);
 }
 
 static void remove_all_children_linked_to_address(const linkaddr_t *destination_addr) {

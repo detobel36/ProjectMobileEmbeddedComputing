@@ -3,7 +3,7 @@ ifeq (server,$(firstword $(MAKECMDGOALS)))
   $(eval $(RUN_ARGS):;@:)
 endif
 
-all: 
+all:
 	$(MAKE) -C src
 
 install:
@@ -13,7 +13,7 @@ run:
 	cd contiki/tools/cooja; ant run
 
 server:
-	python3 src/Server/server.py $(RUN_ARGS)
+	python3 src/Server/server.py --serial $(RUN_ARGS)
 
 help:
 	@echo "Command: make <argument>"
