@@ -48,8 +48,13 @@ static void extra_remove_children(const linkaddr_t address_destination) {
   // TODO may be inform server
 }
 
+// Manage runicast_data connection (open, callback and directly get packet on recv)
 #include "../Common/runicastData.c"
+
+// Define thread to reply to braodcast with current rank
 #include "../Common/runicastRank.c"
+
+// Define thread to send valve packet to children
 #include "../Common/runicastValve.c"
 
 
@@ -104,8 +109,7 @@ recv_data_runicast(const linkaddr_t *from, const struct data_packet *data_packet
   linkaddr_t source_addr = data_packet->address;
 
   // Save children
-  struct children_entry *child = get_child_entry(&source_addr);
-  if(create_child_or_udpate_and_detect_duplicate(child, from, custom_seqno, source_addr, data_packet->data)) {
+  if(create_child_or_udpate_and_detect_duplicate(from, custom_seqno, source_addr, data_packet->data)) {
     return;
   }
 
