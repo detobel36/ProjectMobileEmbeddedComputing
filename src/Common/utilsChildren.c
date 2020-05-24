@@ -50,9 +50,10 @@ static void remove_all_children_linked_to_address(const linkaddr_t *destination_
 }
 
 static bool 
-create_child_or_udpate_and_detect_duplicate(struct children_entry *child, 
-  const linkaddr_t *from, const uint8_t custom_seqno, const linkaddr_t source_addr, 
-  const uint8_t data) {
+create_child_or_udpate_and_detect_duplicate(const linkaddr_t *from, const uint8_t custom_seqno, 
+  const linkaddr_t source_addr, const uint8_t data) {
+  struct children_entry *child = get_child_entry(&source_addr);
+  
   if(child == NULL) {
     struct children_entry *child_entry = memb_alloc(&children_mem);
     child_entry->address_to_contact = *from;
