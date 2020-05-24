@@ -44,6 +44,9 @@ AUTOSTART_PROCESSES(&send_valve_process, &serialProcess, &rank_process);
 /*---------------------------------------------------------------------------*/
 
 #include "../Common/utilsChildren.c"
+static void extra_remove_children(const linkaddr_t address_destination) {
+  // TODO may be inform server
+}
 
 #include "../Common/runicastData.c"
 #include "../Common/runicastRank.c"

@@ -17,11 +17,7 @@
 #define BROADCAST_REPLY_DELAY 10
 
 // Delay to try to send data (no message if no data)
-// #define DATA_MIN_DELAY 10  // Not used
 #define DATA_MAX_DELAY 30
-// Delay to try to send valve (no message if no valve data)
-// #define VALVE_MIN_DELAY 5 // Not used
-// #define VALVE_MAX_DELAY 15 // Not used
 // Delay to measure air quality
 #define DATA_COLLECTING_DELAY 60
 // Default rank on start (equals to max rank)
@@ -40,7 +36,10 @@
 #define ACTIVE_LED_TIMER 600   // 60sec * 10 = 10 minutes
 
 
+#define TIME_TO_FORCE_COMPUTATION_OF_DATA 30  // 30 secondes
+
 #define NUMBER_SENSOR_IN_COMPUTATION 5  // If modified, do not forget to init new list
-#define NUMBER_OF_DATA_TO_COMPUTE 30
+#define NUMBER_OF_DATA_TO_COMPUTE 5 // TODO Change by 30
+#define THRESHOLD -255  // TODO change this data to real value
 
 #endif

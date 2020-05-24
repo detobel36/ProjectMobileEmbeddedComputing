@@ -57,7 +57,8 @@ struct saved_node_to_compute_entry
 {
   struct saved_node_to_compute_entry *next;
   linkaddr_t from;
-  struct ctimer ctimer;
+  list_t *saved_data_list;
+  bool already_computed;
 };
 
 struct saved_data_to_compute_entry
@@ -66,5 +67,10 @@ struct saved_data_to_compute_entry
   uint8_t data;
 };
 
+struct list_of_list_saved_data_entry
+{
+  struct list_of_list_saved_data_entry *next;
+  list_t *saved_data_list;
+};
 
 #endif

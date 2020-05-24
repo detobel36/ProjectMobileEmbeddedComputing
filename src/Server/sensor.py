@@ -8,7 +8,7 @@ from leastSquareRoot import leastSquareRoot
 #NUMBER_VALUE_TO_EVAL = 30
 NUMBER_VALUE_TO_EVAL = 5  # For test
 # THRESHOLD = -5
-THRESHOLD = 1000000
+THRESHOLD = -1000000
 
 
 """
@@ -43,7 +43,7 @@ class Sensor:
 
         self.log.info("(" + str(self.address) + ") Leas Square Root value: " + str(round(m, 2)))
 
-        return m < THRESHOLD
+        return m > THRESHOLD
 
 
     # TODO update this name

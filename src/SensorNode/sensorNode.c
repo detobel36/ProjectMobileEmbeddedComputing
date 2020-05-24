@@ -65,6 +65,9 @@ AUTOSTART_PROCESSES(&broadcast_process, &rank_process, &collect_data_process, &s
 /*---------------------------------------------------------------------------*/
 
 #include "../Common/utilsChildren.c"
+static void extra_remove_children(const linkaddr_t address_destination) {
+  // Nothing to do
+}
 
 #include "../Common/runicastData.c"
 #include "../Common/runicastRank.c"
