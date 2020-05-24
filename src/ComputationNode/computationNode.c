@@ -251,6 +251,13 @@ static void extra_remove_children(const linkaddr_t address_destination) {
     memb_free(&save_node_mem, node_entry);
     printf("[DEBUG - Computation] Remove all data of the node %d.%d\n", 
       address_destination.u8[0], address_destination.u8[1]);
+
+    printf("[DEBUG - Computation] Try to have empty saved list now\n");
+    list_t* empty_list = get_empty_saved_data_list();
+    if(empty_list == NULL) {
+      printf("[DEBUG - Computation] No empty listy\n");
+    }
+    
   }
 
 }
@@ -317,7 +324,8 @@ try_to_save_data_to_compute(const struct data_packet *data_packet)
   if(node_entry == NULL && list_length(save_node_list) < NUMBER_SENSOR_IN_COMPUTATION) {
     list_t* empty_saved_data = get_empty_saved_data_list();
     if(empty_saved_data == NULL) {
-      printf("[SEVERE - Computation] Place in save_node_list but no empty_saved_data !\n");
+      printf("[SEVERE - Computation] Place in save_node_list (length %d) but no empty_saved_data !\n",
+        list_length(save_node_list));
       return false;
     }
 
@@ -380,7 +388,8 @@ recv_data_runicast(const linkaddr_t *from, const struct data_packet *data_packet
   }
 
   if(try_to_save_data_to_compute(data_packet)) {
-    printf("[DEBUG - Computation] Do not forward data (used to local computation)\n");
+    printf("[DEBUG - Computation] Do not forward data of source %d.%d (used to local computation)\n",
+      source_addr.u8[0], source_addr.u8[1]);
     return;
   }
 
