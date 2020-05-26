@@ -217,6 +217,10 @@ timedout_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t re
 
 
 /*---------------------------------------------------------------------------*/
+// Method call when valve packet receive
+static void 
+get_valve_packet();
+
 // Receive valve packet
 static void
 recv_valve_runicast(const linkaddr_t *from, const struct valve_packet *forward_valve_packet)
@@ -236,7 +240,7 @@ recv_valve_runicast(const linkaddr_t *from, const struct valve_packet *forward_v
     linkaddr_t destination_addr = forward_valve_packet->address;
 
     if(linkaddr_cmp(&destination_addr, &linkaddr_node_addr)) {
-      printf("[WARN - %s] Get valve information, but this is a computation\n", NODE_TYPE);
+      get_valve_packet();
 
     } else {
       printf("[INFO - %s] Get valve packet to forward to: %d.%d from: %d.%d, custom_seqno %d\n", 

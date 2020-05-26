@@ -45,7 +45,7 @@ AUTOSTART_PROCESSES(&send_valve_process, &serialProcess, &rank_process);
 
 #include "../Common/utilsChildren.c"
 static void extra_remove_children(const linkaddr_t address_destination) {
-  // TODO may be inform server
+  // Do not inform server because time out system is directly integrate on server side
 }
 
 // Manage runicast_data connection (open, callback and directly get packet on recv)
