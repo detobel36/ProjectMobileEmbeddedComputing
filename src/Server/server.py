@@ -37,12 +37,12 @@ class Server:
             matchRegex = re.match("\[DATA\] ([0-9\.]*) - ([0-9]{1,2})", line)
             if(matchRegex and len(matchRegex.groups()) == 2):
                 address, value = matchRegex.groups()
-                self.log.info("Get value " + value + " from " + address)
+                self.log.info("Get value " + str(value) + " from " + str(address))
 
                 if(address not in self.listSensor):
                     self.listSensor[address] = Sensor(address)
 
-                self.listSensor[address].addValue(value)
+                self.listSensor[address].addValue(int(value))
 
                 openValve = self.listSensor[address].checkIfValveMustBeOpen()
                 if(openValve != None and openValve):

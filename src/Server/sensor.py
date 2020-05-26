@@ -28,11 +28,11 @@ class Sensor:
     Add a value but removed all old values if the time between the last value and the current value
     is too long.
 
-    @param value: the value (between 0 and 100) that must be add
+    @param value: the int value (between 0 and 100) that must be add
     @return: None
     """
     def addValue(self, value):
-        if(value < 0 or 100 > value):
+        if(value < 0 or 100 < value):
             self.log.severe("(" + str(self.address) + " Receive invalid value: " + str(value))
             return
 
@@ -42,10 +42,10 @@ class Sensor:
             self.log.info("(" + str(self.address) + ") Reset all values because saved values " + \
                 "are too old")
 
-        if(self.listValues == NUMBER_VALUE_TO_EVAL):
+        if(len(self.listValues) == NUMBER_VALUE_TO_EVAL):
             self.listValues.pop(0)
 
-        self.listValues.append(int(value))
+        self.listValues.append(value)
         self.log.debug("(" + str(self.address) + ") Add value " + str(value) + " " + \
             "(total " + str(len(self.listValues)) + ")")
         self.lastUpdate = int(time())
