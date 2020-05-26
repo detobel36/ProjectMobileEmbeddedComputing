@@ -238,6 +238,14 @@ recv_data_runicast(const linkaddr_t *from, const struct data_packet *data_packet
 /*---------------------------------------------------------------------------*/
 
 
+/*---------------------------------------------------------------------------*/
+static void 
+get_valve_packet()
+{
+  printf("[WARN - Computation] Get valve information, but this is a computation\n");
+}
+/*---------------------------------------------------------------------------*/
+
 
 /*================================ THREADS ==================================*/
 
