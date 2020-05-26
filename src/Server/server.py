@@ -44,7 +44,7 @@ class Server:
 
                 self.listSensor[address].addValue(value)
 
-                openValve = self.listSensor[address].getOpenValve()
+                openValve = self.listSensor[address].checkIfValveMustBeOpen()
                 if(openValve != None and openValve):
                     self._writeSerial(address)
 
