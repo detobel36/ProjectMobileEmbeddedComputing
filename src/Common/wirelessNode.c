@@ -91,7 +91,7 @@ forward_data(const linkaddr_t *from, const struct data_packet *data_packet)
     parent_addr.u8[0], parent_addr.u8[1], custom_seqno);
 
   struct data_packet_entry *data_entry = memb_alloc(&data_mem);
-  data_entry->custom_seqno = custom_seqno+1;
+  data_entry->custom_seqno = ((custom_seqno+1) % NUM_MAX_SEQNO);
   data_entry->data = data_packet->data;
   data_entry->address = source_addr;
   list_add(data_list, data_entry);

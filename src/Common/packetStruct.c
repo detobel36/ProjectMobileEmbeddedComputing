@@ -60,6 +60,7 @@ struct saved_node_to_compute_entry
   linkaddr_t from;
   list_t *saved_data_list;
   bool already_computed;
+  struct ctimer ctimer;
 };
 
 struct saved_data_to_compute_entry

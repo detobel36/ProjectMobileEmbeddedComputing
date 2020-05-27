@@ -40,9 +40,6 @@ AUTOSTART_PROCESSES(&broadcast_process, &rank_process, &collect_data_process, &s
 
 // Manage easily children
 #include "../Common/utilsChildren.c"
-static void extra_remove_children(const linkaddr_t address_destination) {
-  // Nothing to do
-}
 
 // Set up variable with rank, parent, ...
 #include "../Common/wirelessNode.h"
