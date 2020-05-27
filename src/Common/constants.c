@@ -7,7 +7,7 @@
 // Number of data that are keep in queue (before to be send)
 #define NUM_DATA_IN_QUEUE 10
 
-// Maximum number that could ahve SEQNO (seqno is used by valve packet to detect duplicate)
+// Maximum number that could have SEQNO (seqno is used by valve packet to detect duplicate)
 #define NUM_MAX_SEQNO 10
 
 // Delay to broadcast 
