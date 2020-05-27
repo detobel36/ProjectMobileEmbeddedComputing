@@ -35,6 +35,10 @@
 // Time before a child need to be removed from a node (down link)
 #define CHILDREN_TIMEOUT 150   // A litle bit more than 2 minutes (because data are not always send directly)
 
+// Number of connexion before to reset rank
+// Set to zero to disable
+#define MAX_FAIL_CONNNECTION_BEFORE_RESET 1  // If 1, the first connection fail will not reset rank
+
 
 ///////////// CHANNEL /////////////
 // Communication channel

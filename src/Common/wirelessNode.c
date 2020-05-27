@@ -195,8 +195,6 @@ recv_rank_runicast(const linkaddr_t *from, const struct rank_packet *rank_packet
 /*---------------------------------------------------------------------------*/
 // Receive data packet
 
-// TODO need to adapt recv_data_runicast
-
 static void
 sent_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
@@ -211,7 +209,12 @@ timedout_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t re
 {
   printf("[WARN - %s] Problem to send data to parent %d.%d (retransmissions %d). Reset rank !\n", 
     NODE_TYPE, to->u8[0], to->u8[1], retransmissions);
-  reset_rank();
+  if(number_fail_connection < MAX_FAIL_CONNNECTION_BEFORE_RESET) {
+    ++number_fail_connection;
+  } else {
+    number_fail_connection = 0;
+    reset_rank();
+  }
 }
 /*---------------------------------------------------------------------------*/
 

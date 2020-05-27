@@ -18,6 +18,9 @@ static uint16_t parent_last_rssi;
 static uint8_t parent_last_valve_seqno = 255;
 static uint8_t current_data_seqno;
 
+// More robuste connection
+static uint8_t number_fail_connection = 0;
+
 // Event
 static process_event_t new_data_event;
 /*---------------------------------------------------------------------------*/
