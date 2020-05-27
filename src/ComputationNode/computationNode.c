@@ -89,37 +89,6 @@ get_empty_saved_data_list()
   return NULL;
 }
 
-static void 
-extra_remove_children(const linkaddr_t address_destination) 
-{
-  struct saved_node_to_compute_entry *node_entry;
-  for(node_entry = list_head(save_node_list); node_entry != NULL; node_entry = list_item_next(node_entry)) {
-    if(linkaddr_cmp(&node_entry->from, &address_destination)) {
-      break;
-    }
-  }
-
-  if(node_entry != NULL) {
-    list_t *saved_data_list = node_entry->saved_data_list;
-
-    struct saved_data_to_compute_entry *saved_data;
-    struct saved_data_to_compute_entry *new_saved_data;
-    for(saved_data = list_head(*saved_data_list); saved_data != NULL; saved_data = new_saved_data) {
-      new_saved_data = list_item_next(saved_data);
-
-      list_remove(*saved_data_list, saved_data);
-      memb_free(&save_data_mem, saved_data);
-    }
-
-    list_remove(save_node_list, node_entry);
-    memb_free(&save_node_mem, node_entry);
-    printf("[DEBUG - Computation] Remove all data of the node %d.%d\n", 
-      address_destination.u8[0], address_destination.u8[1]);
-
-  }
-
-}
-
 static double 
 computeLeastSquare(list_t* saved_data_list) 
 {
@@ -155,12 +124,35 @@ computeLeastSquare(list_t* saved_data_list)
   return (NUMBER_OF_DATA_TO_COMPUTE * xy  -  x * y) / denom;
 }
 
+static void
+remove_compute_node(void *node_entry_ptr)
+{
+  struct saved_node_to_compute_entry *node_entry = node_entry_ptr;
+
+  list_t *saved_data_list = node_entry->saved_data_list;
+
+  struct saved_data_to_compute_entry *saved_data;
+  struct saved_data_to_compute_entry *new_saved_data;
+  for(saved_data = list_head(*saved_data_list); saved_data != NULL; saved_data = new_saved_data) {
+    new_saved_data = list_item_next(saved_data);
+
+    list_remove(*saved_data_list, saved_data);
+    memb_free(&save_data_mem, saved_data);
+  }
+
+  list_remove(save_node_list, node_entry);
+  memb_free(&save_node_mem, node_entry);
+  printf("[DEBUG - Computation] Remove all data of the node %d.%d\n", 
+    node_entry->from.u8[0], node_entry->from.u8[1]);
+
+}
 
 static bool
 try_to_save_data_to_compute(const struct data_packet *data_packet)
 {
 
   struct saved_node_to_compute_entry *node_entry;
+  // Check if node is aleady register (to be compute)
   for(node_entry = list_head(save_node_list); node_entry != NULL; node_entry = list_item_next(node_entry)) {
     if(linkaddr_cmp(&node_entry->from, &data_packet->address)) {
       break;
@@ -196,6 +188,8 @@ try_to_save_data_to_compute(const struct data_packet *data_packet)
     saved_data->data = data_packet->data;
     list_add(*node_entry->saved_data_list, saved_data);
     node_entry->already_computed = false;
+    ctimer_set(&node_entry->ctimer, MAX_DATA_DIFFERENCE * CLOCK_SECOND, remove_compute_node, node_entry);
+
     printf("[INFO - Computation] Save data %d of node %d.%d (total: %d)\n", data_packet->data, 
       data_packet->address.u8[0], data_packet->address.u8[1], 
       list_length(*node_entry->saved_data_list));

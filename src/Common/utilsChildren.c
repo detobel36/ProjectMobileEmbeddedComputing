@@ -22,9 +22,6 @@ get_child_entry(const linkaddr_t *destination_addr)
   return child;
 }
 
-static void
-extra_remove_children(const linkaddr_t address_destination);
-
 static void 
 remove_children(void *child_entry_ptr) 
 {
@@ -35,8 +32,6 @@ remove_children(void *child_entry_ptr)
 
   list_remove(children_list, child_entry);
   memb_free(&children_mem, child_entry);
-
-  extra_remove_children(child_entry->address_destination);
 }
 
 static void remove_all_children_linked_to_address(const linkaddr_t *destination_addr) {

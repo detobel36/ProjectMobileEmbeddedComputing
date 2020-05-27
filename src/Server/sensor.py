@@ -3,15 +3,8 @@
 
 from time import time
 from log import Log
-from constants import DEBUG
+from constants import DEBUG, NUMBER_OF_DATA_TO_COMPUTE, THRESHOLD, MAX_DATA_DIFFERENCE
 from leastSquareRoot import leastSquareRoot
-
-
-NUMBER_VALUE_TO_EVAL = 30 # 5  # For test
-THRESHOLD = 0
-
-# Time before delete a sensor
-MAX_DATA_DIFFERENCE = 190 # If we don't have any news since more than 3 minute (thus we lost 3 values)
 
 
 
@@ -42,7 +35,7 @@ class Sensor:
             self.log.info("(" + str(self.address) + ") Reset all values because saved values " + \
                 "are too old")
 
-        if(len(self.listValues) == NUMBER_VALUE_TO_EVAL):
+        if(len(self.listValues) == NUMBER_OF_DATA_TO_COMPUTE):
             self.listValues.pop(0)
 
         self.listValues.append(value)
@@ -51,11 +44,11 @@ class Sensor:
         self.lastUpdate = int(time())
 
     def _computeLeastSquareRoot(self):
-        if(len(self.listValues) < NUMBER_VALUE_TO_EVAL):
+        if(len(self.listValues) < NUMBER_OF_DATA_TO_COMPUTE):
             self.log.debug("(" + str(self.address) + ") No enought value for valve " + \
                 "(total " + str(len(self.listValues)) + ")")
             return None
-        if(len(self.listValues) > NUMBER_VALUE_TO_EVAL):
+        if(len(self.listValues) > NUMBER_OF_DATA_TO_COMPUTE):
             self.log.warn("(" + str(self.address) + ") Number of data is to high (" + \
                 str(len(self.listValues)) + ")")
 
