@@ -84,7 +84,9 @@ recv_data_runicast(const linkaddr_t *from, const struct data_packet *data_packet
 
 static void get_valve_packet()
 {
-  printf("[INFO - Sensor] Get valve information, try to open it\n");
+  if(LOG_LEVEL <= 2) {
+    printf("[INFO - Sensor] Get valve information, try to open it\n");
+  }
   process_post(&led_process, active_led, NULL);
 }
 
@@ -111,8 +113,10 @@ PROCESS_THREAD(collect_data_process, ev, data)
     entry->custom_seqno = ((++current_data_seqno) % NUM_MAX_SEQNO);
     entry->data = random_int;
     entry->address = linkaddr_node_addr;
-    printf("[INFO - Sensor] Collect new data %d (%d data already in queue)\n", random_int, 
-      list_length(data_list));
+    if(LOG_LEVEL <= 2) {
+      printf("[INFO - Sensor] Collect new data %d (%d data already in queue)\n", random_int, 
+        list_length(data_list));
+    }
     list_add(data_list, entry);
 
     if(!runicast_is_transmitting(&runicast_data)) {
@@ -137,18 +141,22 @@ PROCESS_THREAD(led_process, ev, data)
   while(1) {
     // Wait 
     PROCESS_WAIT_EVENT_UNTIL(ev == active_led);
-    printf("[INFO - Sensor] Valve is now open\n");
+    if(LOG_LEVEL <= 2) {
+      printf("[INFO - Sensor] Valve is now open\n");
+    }
     leds_on(LEDS_ALL);
     do {
       etimer_set(&et, CLOCK_SECOND * ACTIVE_LED_TIMER);
       PROCESS_WAIT_EVENT_UNTIL(ev == active_led || etimer_expired(&et));
-      if(ev == active_led) {
+      if(ev == active_led && LOG_LEVEL <= 2) {
         printf("[INFO - Sensor] Valve is already open, reset timer\n");
       }
     } while(ev == active_led);
 
     // When timer is done
-    printf("[INFO - Sensor] Timer is out, valve is now closed\n");
+    if(LOG_LEVEL <= 2) {
+      printf("[INFO - Sensor] Timer is out, valve is now closed\n");
+    }
     leds_off(LEDS_ALL);
   }
 
