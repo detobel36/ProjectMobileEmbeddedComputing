@@ -222,6 +222,7 @@ sent_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retran
     printf("[NOTICE - %s] runicast data message sent to %d.%d, retransmissions %d\n", NODE_TYPE,
      to->u8[0], to->u8[1], retransmissions);
   }
+  number_fail_connection = 0;
 
   process_poll(&send_data_process);
 }
