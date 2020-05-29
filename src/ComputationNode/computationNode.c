@@ -253,7 +253,7 @@ PROCESS_THREAD(compute_data_process, ev, data)
   PROCESS_BEGIN();
 
   // Inform parameters
-  printf("[INFO - Computation] Start Computation node with %d slot for nodes, collect %d data before computation and threshold is define on %d\n",
+  printf("[NOTICE - Computation] Start Computation node with %d slot for nodes, collect %d data before computation and threshold is define on %d\n",
     NUMBER_SENSOR_IN_COMPUTATION, NUMBER_OF_DATA_TO_COMPUTE, THRESHOLD);
 
   list_init(save_node_list);

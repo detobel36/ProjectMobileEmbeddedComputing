@@ -84,7 +84,7 @@ recv_data_runicast(const linkaddr_t *from, const struct data_packet *data_packet
 
 static void get_valve_packet()
 {
-  printf("[DEBUG - Sensor] Get valve information, try to open it\n");
+  printf("[INFO - Sensor] Get valve information, try to open it\n");
   process_post(&led_process, active_led, NULL);
 }
 

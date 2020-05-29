@@ -26,7 +26,7 @@ static void
 remove_children(void *child_entry_ptr) 
 {
   struct children_entry *child_entry = child_entry_ptr;
-  printf("[INFO - %s] Remove children %d.%d: no recent message\n", NODE_TYPE, 
+  printf("[NOTICE - %s] Remove children %d.%d: no recent message\n", NODE_TYPE, 
     child_entry->address_destination.u8[0], 
     child_entry->address_destination.u8[1]);
 

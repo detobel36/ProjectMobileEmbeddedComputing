@@ -86,7 +86,7 @@ forward_data(const linkaddr_t *from, const struct data_packet *data_packet)
   uint8_t custom_seqno = data_packet->custom_seqno;
   linkaddr_t source_addr = data_packet->address;
 
-  printf("[INFO - %s] Get data to forward %d (source: %d.%d) from %d.%d to %d.%d, custom_seqno %d\n", 
+  printf("[NOTICE - %s] Get data to forward %d (source: %d.%d) from %d.%d to %d.%d, custom_seqno %d\n", 
     NODE_TYPE, data_packet->data, source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1], 
     parent_addr.u8[0], parent_addr.u8[1], custom_seqno);
 
@@ -157,7 +157,7 @@ recv_rank_runicast(const linkaddr_t *from, const struct rank_packet *rank_packet
   } else if(linkaddr_cmp(&parent_addr, from)) {
 
     if(getting_rank == MAX_RANK) {
-      printf("[INFO - %s] Receive reset rank packet !\n", NODE_TYPE);
+      printf("[NOTICE - %s] Receive reset rank packet !\n", NODE_TYPE);
       reset_rank();
 
     // If parent have a rank upper than knowed rank
@@ -171,7 +171,7 @@ recv_rank_runicast(const linkaddr_t *from, const struct rank_packet *rank_packet
 
     } else {
       parent_last_rssi = current_rssi;
-      printf("[INFO - %s] Update parent quality signal (new: %d)\n", NODE_TYPE, current_rssi);
+      printf("[NOTICE - %s] Update parent quality signal (new: %d)\n", NODE_TYPE, current_rssi);
 
     }
 
@@ -182,7 +182,7 @@ recv_rank_runicast(const linkaddr_t *from, const struct rank_packet *rank_packet
       printf("[INFO - %s] Rank update: change parent (new: %d.%d) and get rank: %d (quality signal: %d)\n", 
         NODE_TYPE, from->u8[0], from->u8[1], rank, parent_last_rssi);
     } else {
-      printf("[INFO - %s] Quality signal not enought to change parent (new: %d, parent: %d)\n", 
+      printf("[NOTICE - %s] Quality signal not enought to change parent (new: %d, parent: %d)\n", 
         NODE_TYPE, current_rssi, parent_last_rssi);
     }
   }
@@ -198,7 +198,7 @@ recv_rank_runicast(const linkaddr_t *from, const struct rank_packet *rank_packet
 static void
 sent_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[INFO - %s] runicast data message sent to %d.%d, retransmissions %d\n", NODE_TYPE,
+  printf("[NOTICE - %s] runicast data message sent to %d.%d, retransmissions %d\n", NODE_TYPE,
    to->u8[0], to->u8[1], retransmissions);
 
   process_poll(&send_data_process);
@@ -235,7 +235,7 @@ recv_valve_runicast(const linkaddr_t *from, const struct valve_packet *forward_v
   }
 
   if(parent_last_valve_seqno == forward_valve_packet->custom_seqno) {
-    printf("[INFO - %s] Detect duplicate valve from parent %d.%d, custom_seqno: %d\n", 
+    printf("[NOTICE - %s] Detect duplicate valve from parent %d.%d, custom_seqno: %d\n", 
       NODE_TYPE, parent_addr.u8[0], parent_addr.u8[1], forward_valve_packet->custom_seqno);
   } else {
     parent_last_valve_seqno = forward_valve_packet->custom_seqno;
@@ -246,7 +246,7 @@ recv_valve_runicast(const linkaddr_t *from, const struct valve_packet *forward_v
       get_valve_packet();
 
     } else {
-      printf("[INFO - %s] Get valve packet to forward to: %d.%d from: %d.%d, custom_seqno %d\n", 
+      printf("[NOTICE - %s] Get valve packet to forward to: %d.%d from: %d.%d, custom_seqno %d\n", 
         NODE_TYPE, destination_addr.u8[0], destination_addr.u8[1], from->u8[0], from->u8[1], 
         parent_last_valve_seqno);
 
@@ -375,7 +375,7 @@ PROCESS_THREAD(send_data_process, ev, data)
       packetbuf_copyfrom(&packet, sizeof(struct data_packet));
       
       runicast_send(&runicast_data, &parent_addr, MAX_RETRANSMISSIONS);
-      printf("[INFO - %s] Send data %d with custom seqno %d (%d data in queue)\n", NODE_TYPE, 
+      printf("[NOTICE - %s] Send data %d with custom seqno %d (%d data in queue)\n", NODE_TYPE, 
         packet.data, packet.custom_seqno, list_length(data_list));
       packetbuf_clear();
     }

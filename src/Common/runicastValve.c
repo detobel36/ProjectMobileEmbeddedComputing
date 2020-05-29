@@ -22,7 +22,7 @@ recv_valve_general_runicast(struct runicast_conn *c, const linkaddr_t *from, uin
 static void
 sent_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[INFO - %s] runicast valve message sent to %d.%d, retransmissions %d\n",
+  printf("[NOTICE - %s] runicast valve message sent to %d.%d, retransmissions %d\n",
    NODE_TYPE, to->u8[0], to->u8[1], retransmissions);
 
   process_poll(&send_valve_process);
@@ -86,7 +86,7 @@ PROCESS_THREAD(send_valve_process, ev, data)
       } else {
         linkaddr_t address_to_contact = child->address_to_contact;
 
-        printf("[INFO - %s] Send valve information to %d.%d (%d valve in queue)\n", 
+        printf("[NOTICE - %s] Send valve information to %d.%d (%d valve in queue)\n", 
           NODE_TYPE, address_to_contact.u8[0], address_to_contact.u8[1], list_length(valve_list));
 
         struct valve_packet packet;
