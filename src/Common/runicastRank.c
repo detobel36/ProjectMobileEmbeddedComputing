@@ -89,7 +89,7 @@ PROCESS_THREAD(rank_process, ev, data)
 
     // If process is wake up to directly reply to broadcast event
     if(ev == broadcast_add_delay_event) {
-      if(LOG_LEVEL == 0) {
+      if(LOG_LEVEL <= 0) {
         printf("[DEBUG - %s] Wake up rank_process due to broadcast event\n", NODE_TYPE);
       }
       // Add delay to reply
