@@ -26,9 +26,11 @@ static void
 remove_children(void *child_entry_ptr) 
 {
   struct children_entry *child_entry = child_entry_ptr;
-  printf("[INFO - %s] Remove children %d.%d: no recent message\n", NODE_TYPE, 
-    child_entry->address_destination.u8[0], 
-    child_entry->address_destination.u8[1]);
+  if(LOG_LEVEL <= 1) {
+    printf("[NOTICE - %s] Remove children %d.%d: no recent message\n", NODE_TYPE, 
+      child_entry->address_destination.u8[0], 
+      child_entry->address_destination.u8[1]);
+  }
 
   list_remove(children_list, child_entry);
   memb_free(&children_mem, child_entry);
@@ -56,18 +58,22 @@ create_child_or_udpate_and_detect_duplicate(const linkaddr_t *from, const uint8_
     child_entry->last_custom_seqno = custom_seqno;
     list_add(children_list, child_entry);
     ctimer_set(&child_entry->ctimer, CHILDREN_TIMEOUT * CLOCK_SECOND, remove_children, child_entry);
-    printf("[DEBUG - %s] Save new child %d.%d (using node %d.%d)\n", 
-      NODE_TYPE, source_addr.u8[0], source_addr.u8[1],
-      from->u8[0], from->u8[1]);
+    if(LOG_LEVEL <= 0) {
+      printf("[DEBUG - %s] Save new child %d.%d (using node %d.%d)\n", 
+        NODE_TYPE, source_addr.u8[0], source_addr.u8[1],
+        from->u8[0], from->u8[1]);
+    }
 
   } else {
 
       if(child->last_custom_seqno == custom_seqno) {
-        printf("[WARN - %s] Detect duplicate data from %d.%d source %d.%d data: %d (custom seqno %d)\n", 
-          NODE_TYPE, 
-          child->address_to_contact.u8[0], child->address_to_contact.u8[1], 
-          child->address_destination.u8[0], child->address_destination.u8[1],
-          data, custom_seqno);
+        if(LOG_LEVEL <= 3) {
+          printf("[WARN - %s] Detect duplicate data from %d.%d source %d.%d data: %d (custom seqno %d)\n", 
+            NODE_TYPE, 
+            child->address_to_contact.u8[0], child->address_to_contact.u8[1], 
+            child->address_destination.u8[0], child->address_destination.u8[1],
+            data, custom_seqno);
+        }
 
         packetbuf_clear();
         return true;

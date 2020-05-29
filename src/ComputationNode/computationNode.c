@@ -100,9 +100,13 @@ computeLeastSquare(list_t* saved_data_list)
 
   uint8_t i = 0;
   struct saved_data_to_compute_entry *saved_data;
-  printf("[DEBUG - Computation] Data: ");
+  if(LOG_LEVEL <= 0) {
+    printf("[DEBUG - Computation] Data: ");
+  }
   for(saved_data = list_head(*saved_data_list); saved_data != NULL; saved_data = list_item_next(saved_data)) {
-    printf("%d ", saved_data->data);
+    if(LOG_LEVEL <= 0) {
+      printf("%d ", saved_data->data);
+    }
 
     x  += i;
     x2 += i * i;
@@ -112,11 +116,15 @@ computeLeastSquare(list_t* saved_data_list)
 
     ++i;
   }
-  printf("\n");
+  if(LOG_LEVEL <= 0) {
+    printf("\n");
+  }
 
   if(i != NUMBER_OF_DATA_TO_COMPUTE) {
-    printf("[SEVERE - Computation] Number of data computed (%d) not equals to %d\n", i, 
-      NUMBER_OF_DATA_TO_COMPUTE);
+    if(LOG_LEVEL <= 4) {
+      printf("[SEVERE - Computation] Number of data computed (%d) not equals to %d\n", i, 
+        NUMBER_OF_DATA_TO_COMPUTE);
+    }
   }
 
   double denom = (NUMBER_OF_DATA_TO_COMPUTE * x2 - x*x);
@@ -142,8 +150,10 @@ remove_compute_node(void *node_entry_ptr)
 
   list_remove(save_node_list, node_entry);
   memb_free(&save_node_mem, node_entry);
-  printf("[DEBUG - Computation] Remove all data of the node %d.%d\n", 
-    node_entry->from.u8[0], node_entry->from.u8[1]);
+  if(LOG_LEVEL <= 0) {
+    printf("[DEBUG - Computation] Remove all data of the node %d.%d\n", 
+      node_entry->from.u8[0], node_entry->from.u8[1]);
+  }
 
 }
 
@@ -162,8 +172,10 @@ try_to_save_data_to_compute(const struct data_packet *data_packet)
   if(node_entry == NULL && list_length(save_node_list) < NUMBER_SENSOR_IN_COMPUTATION) {
     list_t* empty_saved_data = get_empty_saved_data_list();
     if(empty_saved_data == NULL) {
-      printf("[SEVERE - Computation] Place in save_node_list (length %d) but no empty_saved_data !\n",
-        list_length(save_node_list));
+      if(LOG_LEVEL <= 4) {
+        printf("[SEVERE - Computation] Place in save_node_list (length %d) but no empty_saved_data !\n",
+          list_length(save_node_list));
+      }
       return false;
     }
 
@@ -179,9 +191,11 @@ try_to_save_data_to_compute(const struct data_packet *data_packet)
       // Remove latest
       void * removed_elem = list_pop(*node_entry->saved_data_list);
       memb_free(&save_data_mem, removed_elem);
-      printf("[DEBUG - Computation] Remove oldest element of %d.%d, length of list %d\n", 
-        data_packet->address.u8[0], data_packet->address.u8[1],
-        list_length(*node_entry->saved_data_list));
+      if(LOG_LEVEL <= 0) {
+        printf("[DEBUG - Computation] Remove oldest element of %d.%d, length of list %d\n", 
+          data_packet->address.u8[0], data_packet->address.u8[1],
+          list_length(*node_entry->saved_data_list));
+      }
     }
 
     struct saved_data_to_compute_entry *saved_data = memb_alloc(&save_data_mem);
@@ -190,9 +204,11 @@ try_to_save_data_to_compute(const struct data_packet *data_packet)
     node_entry->already_computed = false;
     ctimer_set(&node_entry->ctimer, MAX_DATA_DIFFERENCE * CLOCK_SECOND, remove_compute_node, node_entry);
 
-    printf("[INFO - Computation] Save data %d of node %d.%d (total: %d)\n", data_packet->data, 
-      data_packet->address.u8[0], data_packet->address.u8[1], 
-      list_length(*node_entry->saved_data_list));
+    if(LOG_LEVEL <= 2) {
+      printf("[INFO - Computation] Save data %d of node %d.%d (total: %d)\n", data_packet->data, 
+        data_packet->address.u8[0], data_packet->address.u8[1], 
+        list_length(*node_entry->saved_data_list));
+    }
     process_poll(&compute_data_process);
     return true;
   }
@@ -220,8 +236,10 @@ recv_data_runicast(const linkaddr_t *from, const struct data_packet *data_packet
   }
 
   if(try_to_save_data_to_compute(data_packet)) {
-    printf("[DEBUG - Computation] Do not forward data of source %d.%d (used to local computation)\n",
-      source_addr.u8[0], source_addr.u8[1]);
+    if(LOG_LEVEL <= 0) {
+      printf("[DEBUG - Computation] Do not forward data of source %d.%d (used to local computation)\n",
+        source_addr.u8[0], source_addr.u8[1]);
+    }
     return;
   }
 
@@ -236,7 +254,9 @@ recv_data_runicast(const linkaddr_t *from, const struct data_packet *data_packet
 static void 
 get_valve_packet()
 {
-  printf("[WARN - Computation] Get valve information, but this is a computation\n");
+  if(LOG_LEVEL <= 3) {
+    printf("[WARN - Computation] Get valve information, but this is a computation\n");
+  }
 }
 /*---------------------------------------------------------------------------*/
 
@@ -253,8 +273,10 @@ PROCESS_THREAD(compute_data_process, ev, data)
   PROCESS_BEGIN();
 
   // Inform parameters
-  printf("[INFO - Computation] Start Computation node with %d slot for nodes, collect %d data before computation and threshold is define on %d\n",
-    NUMBER_SENSOR_IN_COMPUTATION, NUMBER_OF_DATA_TO_COMPUTE, THRESHOLD);
+  if(LOG_LEVEL <= 1) {
+    printf("[NOTICE - Computation] Start Computation node with %d slot for nodes, collect %d data before computation and threshold is define on %d\n",
+      NUMBER_SENSOR_IN_COMPUTATION, NUMBER_OF_DATA_TO_COMPUTE, THRESHOLD);
+  }
 
   list_init(save_node_list);
   memb_init(&save_node_mem);
@@ -295,36 +317,46 @@ PROCESS_THREAD(compute_data_process, ev, data)
 
     etimer_set(&et, CLOCK_SECOND * TIME_TO_FORCE_COMPUTATION_OF_DATA);
     PROCESS_WAIT_EVENT();
-    printf("[DEBUG - Computation] Process compute_data_process have been poll\n");
+    if(LOG_LEVEL <= 0) {
+      printf("[DEBUG - Computation] Process compute_data_process have been poll\n");
+    }
 
     struct saved_node_to_compute_entry *node_entry;
     for(node_entry = list_head(save_node_list); node_entry != NULL; node_entry = list_item_next(node_entry)) {
       list_t* saved_data_list = node_entry->saved_data_list;
 
       if(list_length(*saved_data_list) == NUMBER_OF_DATA_TO_COMPUTE && !node_entry->already_computed) {
-        printf("[DEBUG - Computation] Need to compute value of %d.%d\n", 
-          node_entry->from.u8[0], node_entry->from.u8[1]);
+        if(LOG_LEVEL <= 0) {
+          printf("[DEBUG - Computation] Need to compute value of %d.%d\n", 
+            node_entry->from.u8[0], node_entry->from.u8[1]);
+        }
         double result = computeLeastSquare(saved_data_list);
-        printf("[DEBUG - Computation] Result: %d\n", (int) result);
-        printf("[DEBUG - Computation] ----------\n");
+        if(LOG_LEVEL <= 0) {
+          printf("[DEBUG - Computation] Result: %d\n", (int) result);
+          printf("[DEBUG - Computation] ----------\n");
+        }
 
         if(result > THRESHOLD) {
           struct valve_packet_entry *valve_entry = memb_alloc(&valve_mem);
           valve_entry->address = node_entry->from;
           list_add(valve_list, valve_entry);
-          printf("[INFO - Computation] Open valve of node: %d.%d\n", node_entry->from.u8[0], 
-            node_entry->from.u8[1]);
+          if(LOG_LEVEL <= 2) {
+            printf("[INFO - Computation] Open valve of node: %d.%d\n", node_entry->from.u8[0], 
+              node_entry->from.u8[1]);
+          }
 
           if(!runicast_is_transmitting(&runicast_valve)) {
             process_poll(&send_valve_process);
           }
         } else {
-          printf("[INFO - Computation] Value of node %d.%d %d is not upper than threshold %d\n",
-            node_entry->from.u8[0], node_entry->from.u8[1], (int) result, THRESHOLD);
+          if(LOG_LEVEL <= 2) {
+            printf("[INFO - Computation] Value of node %d.%d %d is not upper than threshold %d\n",
+              node_entry->from.u8[0], node_entry->from.u8[1], (int) result, THRESHOLD);
+          }
         }
 
         node_entry->already_computed = true;
-      } else {
+      } else if(LOG_LEVEL <= 0) {
         printf("[DEBUG - Computation] Nothing to compute for node %d.%d (nbr data: %d, computed: %d)\n",
           node_entry->from.u8[0], node_entry->from.u8[1], list_length(*saved_data_list), 
           node_entry->already_computed);

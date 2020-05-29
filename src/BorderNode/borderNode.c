@@ -91,7 +91,9 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 static void
 recv_rank_runicast(const linkaddr_t *from, const struct rank_packet *rank_packet)
 {
-  printf("[SEVERE - Border] Not normal to be here (recv_rank_runicast)\n");
+  if(LOG_LEVEL <= 4) {
+    printf("[SEVERE - Border] Not normal to be here (recv_rank_runicast)\n");
+  }
 }
 
 /*---------------------------------------------------------------------------*/
@@ -110,8 +112,10 @@ recv_data_runicast(const linkaddr_t *from, const struct data_packet *data_packet
     return;
   }
 
-  printf("[INFO - Border] Receive data %d (source %d.%d) from: %d.%d\n", 
-    data_packet->data, source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1]);
+  if(LOG_LEVEL <= 2) {
+    printf("[INFO - Border] Receive data %d (source %d.%d) from: %d.%d\n", 
+      data_packet->data, source_addr.u8[0], source_addr.u8[1], from->u8[0], from->u8[1]);
+  }
   // Send information to server (only message with prefix "[DATA]")
   printf("[DATA] %d.%d - %d\n", source_addr.u8[0], source_addr.u8[1], data_packet->data);
 
@@ -121,15 +125,19 @@ recv_data_runicast(const linkaddr_t *from, const struct data_packet *data_packet
 static void
 sent_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[SEVERE - Border] Not normal to send data packet (to %d.%d), retransmissions %d\n", 
-    to->u8[0], to->u8[1], retransmissions);
+  if(LOG_LEVEL <= 4) {
+    printf("[SEVERE - Border] Not normal to send data packet (to %d.%d), retransmissions %d\n", 
+      to->u8[0], to->u8[1], retransmissions);
+  }
 }
 
 static void
 timedout_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[SEVERE - Border] Not normal to try to send data packet (to %d.%d), retransmissions %d\n", 
-    to->u8[0], to->u8[1], retransmissions);
+  if(LOG_LEVEL <= 4) {
+    printf("[SEVERE - Border] Not normal to try to send data packet (to %d.%d), retransmissions %d\n", 
+      to->u8[0], to->u8[1], retransmissions);
+  }
 }
 /*---------------------------------------------------------------------------*/
 
@@ -139,8 +147,10 @@ timedout_data_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t re
 static void
 recv_valve_runicast(const linkaddr_t *from, const struct valve_packet *forward_valve_packet)
 {
-  printf("[SEVERE - Border] Not normal to receive valve packet (from %d.%d)\n", 
-    from->u8[0], from->u8[1]);
+  if(LOG_LEVEL <= 4) {
+    printf("[SEVERE - Border] Not normal to receive valve packet (from %d.%d)\n", 
+      from->u8[0], from->u8[1]);
+  }
 }
 /*---------------------------------------------------------------------------*/
 
@@ -183,7 +193,9 @@ PROCESS_THREAD(serialProcess, ev, data)
       receivedAddr.u8[0] = u8_0;
       receivedAddr.u8[1] = u8_1;
 
-      printf("[INFO - Border] Open valve of node: %d.%d\n", receivedAddr.u8[0], receivedAddr.u8[1]);
+      if(LOG_LEVEL <= 2) {
+        printf("[INFO - Border] Open valve of node: %d.%d\n", receivedAddr.u8[0], receivedAddr.u8[1]);
+      }
 
       struct valve_packet_entry *valve_entry = memb_alloc(&valve_mem);
       valve_entry->address = receivedAddr;

@@ -1,6 +1,19 @@
 #ifndef constants_c
 #define constants_c
 
+
+///////////// LOG /////////////
+// Display log above the LOG_LEVEL
+// 0 = debug
+// 1 = notice
+// 2 = info
+// 3 = warning
+// 4 = severe
+#define LOG_LEVEL 2
+///////////////////////////////////////
+
+
+///////////// COMMUNICATION /////////////
 // Number of retransmission before to achieved that a communication is down
 #define MAX_RETRANSMISSIONS 4
 
@@ -23,9 +36,19 @@
 // Add delay to reply to broadcast (to avoid collision), between 0 and BROADCAST_REPLY_DELAY
 #define BROADCAST_REPLY_DELAY 10
 
+// Number of connexion before to reset rank
+// Set to zero to disable
+#define MAX_FAIL_CONNNECTION_BEFORE_RESET 1  // If 1, the first connection fail will not reset rank
+///////////////////////////////////////
+
+
+///////////// DATA /////////////
 // Delay to try to send data (no message if no data)
 #define DATA_MAX_DELAY 30
+///////////////////////////////////////
 
+
+///////////// RANK-CHILDREN /////////////
 // Default rank on start (equals to max rank)
 #define MAX_RANK 255
 
@@ -34,10 +57,7 @@
 
 // Time before a child need to be removed from a node (down link)
 #define CHILDREN_TIMEOUT 150   // A litle bit more than 2 minutes (because data are not always send directly)
-
-// Number of connexion before to reset rank
-// Set to zero to disable
-#define MAX_FAIL_CONNNECTION_BEFORE_RESET 1  // If 1, the first connection fail will not reset rank
+///////////////////////////////////////
 
 
 ///////////// CHANNEL /////////////

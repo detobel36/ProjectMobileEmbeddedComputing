@@ -21,7 +21,9 @@ create_rank_response_packet(const linkaddr_t *from)
 {
   struct rank_packet_entry *packet_response = memb_alloc(&rank_mem);
     packet_response->destination = *from;
-    printf("[INFO - %s] Create response rank for %d.%d\n", NODE_TYPE, from->u8[0], from->u8[1]);
+    if(LOG_LEVEL <= 1) {
+      printf("[NOTICE - %s] Create response rank for %d.%d\n", NODE_TYPE, from->u8[0], from->u8[1]);
+    }
     list_add(rank_list, packet_response);
     packetbuf_clear();
 
@@ -44,16 +46,20 @@ recv_rank_general_runicast(struct runicast_conn *c, const linkaddr_t *from, uint
 static void
 sent_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[INFO - %s] runicast rank message sent to %d.%d, retransmissions %d\n",
-   NODE_TYPE, to->u8[0], to->u8[1], retransmissions);
+  if(LOG_LEVEL <= 1) {
+    printf("[NOTICE - %s] runicast rank message sent to %d.%d, retransmissions %d\n",
+      NODE_TYPE, to->u8[0], to->u8[1], retransmissions);
+  }
   process_poll(&rank_process);
 }
 
 static void
 timedout_rank_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[WARN - %s] runicast rank message timed out when sending to %d.%d, retransmissions %d\n",
-   NODE_TYPE, to->u8[0], to->u8[1], retransmissions);
+  if(LOG_LEVEL <= 3) {
+    printf("[WARN - %s] runicast rank message timed out when sending to %d.%d, retransmissions %d\n",
+      NODE_TYPE, to->u8[0], to->u8[1], retransmissions);
+  }
   process_poll(&rank_process);
 }
 
@@ -83,7 +89,9 @@ PROCESS_THREAD(rank_process, ev, data)
 
     // If process is wake up to directly reply to broadcast event
     if(ev == broadcast_add_delay_event) {
-      printf("[DEBUG - %s] Wake up rank_process due to broadcast event\n", NODE_TYPE);
+      if(LOG_LEVEL <= 0) {
+        printf("[DEBUG - %s] Wake up rank_process due to broadcast event\n", NODE_TYPE);
+      }
       // Add delay to reply
       etimer_set(&et, random_rand() % (CLOCK_SECOND * BROADCAST_REPLY_DELAY));
       // If event or timer
@@ -100,8 +108,10 @@ PROCESS_THREAD(rank_process, ev, data)
       linkaddr_t destination_addr = entry->destination;
       packetbuf_clear();
 
-      printf("[INFO - %s] Send rank information to %d.%d (%d rank in queue)\n", 
-        NODE_TYPE, destination_addr.u8[0], destination_addr.u8[1], list_length(rank_list));
+      if(LOG_LEVEL <= 1) {
+        printf("[NOTICE - %s] Send rank information to %d.%d (%d rank in queue)\n", 
+          NODE_TYPE, destination_addr.u8[0], destination_addr.u8[1], list_length(rank_list));
+      }
 
       struct rank_packet packet;
       packet.rank = rank;

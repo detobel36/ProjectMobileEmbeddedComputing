@@ -22,8 +22,10 @@ recv_valve_general_runicast(struct runicast_conn *c, const linkaddr_t *from, uin
 static void
 sent_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[INFO - %s] runicast valve message sent to %d.%d, retransmissions %d\n",
-   NODE_TYPE, to->u8[0], to->u8[1], retransmissions);
+  if(LOG_LEVEL <= 1) {
+    printf("[NOTICE - %s] runicast valve message sent to %d.%d, retransmissions %d\n",
+      NODE_TYPE, to->u8[0], to->u8[1], retransmissions);
+  }
 
   process_poll(&send_valve_process);
 }
@@ -31,8 +33,10 @@ sent_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retra
 static void
 timedout_valve_runicast(struct runicast_conn *c, const linkaddr_t *to, uint8_t retransmissions)
 {
-  printf("[WARN - %s] runicast valve message timed out when sending to %d.%d, retransmissions %d\n",
-   NODE_TYPE, to->u8[0], to->u8[1], retransmissions);
+  if(LOG_LEVEL <= 3) {
+    printf("[WARN - %s] runicast valve message timed out when sending to %d.%d, retransmissions %d\n",
+      NODE_TYPE, to->u8[0], to->u8[1], retransmissions);
+  }
 
   process_poll(&send_valve_process);
 
@@ -64,13 +68,19 @@ PROCESS_THREAD(send_valve_process, ev, data)
   while(1) {
 
     PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
-    printf("[DEBUG - %s] Wake up send_valve_process\n", NODE_TYPE);
+    if(LOG_LEVEL <= 0) {
+      printf("[DEBUG - %s] Wake up send_valve_process\n", NODE_TYPE);
+    }
 
     while(list_length(valve_list) > 0) {
       while (runicast_is_transmitting(&runicast_valve)) {
-        printf("[DEBUG - %s] Wait runicast_valve: %s\n", NODE_TYPE, PROCESS_CURRENT()->name);
+        if(LOG_LEVEL <= 0) {
+          printf("[DEBUG - %s] Wait runicast_valve: %s\n", NODE_TYPE, PROCESS_CURRENT()->name);
+        }
         PROCESS_WAIT_EVENT_UNTIL(ev != serial_line_event_message);
-        printf("[DEBUG - %s] Wake up send_valve_process end of transmitting\n", NODE_TYPE);
+        if(LOG_LEVEL <= 0) {
+          printf("[DEBUG - %s] Wake up send_valve_process end of transmitting\n", NODE_TYPE);
+        }
       }
 
       struct valve_packet_entry *entry = list_pop(valve_list);
@@ -81,13 +91,17 @@ PROCESS_THREAD(send_valve_process, ev, data)
       struct children_entry *child = get_child_entry(&destination_addr);
 
       if(child == NULL) {
-        printf("[WARN - %s] Could not send packet to %d.%d. Destination unknow\n", 
-          NODE_TYPE, destination_addr.u8[0], destination_addr.u8[1]);
+        if(LOG_LEVEL <= 3) {
+          printf("[WARN - %s] Could not send packet to %d.%d. Destination unknow\n", 
+            NODE_TYPE, destination_addr.u8[0], destination_addr.u8[1]);
+        }
       } else {
         linkaddr_t address_to_contact = child->address_to_contact;
 
-        printf("[INFO - %s] Send valve information to %d.%d (%d valve in queue)\n", 
-          NODE_TYPE, address_to_contact.u8[0], address_to_contact.u8[1], list_length(valve_list));
+        if(LOG_LEVEL <= 1) {
+          printf("[NOTICE - %s] Send valve information to %d.%d (%d valve in queue)\n", 
+            NODE_TYPE, address_to_contact.u8[0], address_to_contact.u8[1], list_length(valve_list));
+        }
 
         struct valve_packet packet;
         packet.address = destination_addr;
